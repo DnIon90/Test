@@ -1,25 +1,65 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Site Albastru • Dn_Ion</title>
-
-  <!-- Stiluri -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Site pe GitHub Pages</title>
   <style>
-    :root{
-      --blue-1:#0b74ea;
-      --blue-2:#0366d6;
-      --accent:#00d4ff;
-      --glass: rgba(255,255,255,0.08);
-      --card-bg: rgba(255,255,255,0.06);
-      --radius:12px;
-      --max-width:1100px;
-      --text:#eaf4ff;
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: linear-gradient(135deg, #0b74ea, #0366d6);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
+    header {
+      padding: 20px;
+      background: rgba(0,0,0,0.2);
+    }
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    footer {
+      padding: 15px;
+      background: rgba(0,0,0,0.2);
+    }
+    .box {
+      background: rgba(255,255,255,0.1);
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 600px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌐 Site-ul meu pe GitHub Pages</h1>
+  </header>
 
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background: linear-gradient(135deg, var(--blue-2) 0%, var
+  <main>
+    <div class="box">
+      <p>Bun venit pe site-ul meu hostat gratuit cu GitHub Pages 🚀</p>
+      <p>Aici pot adăuga texte, imagini sau chiar un radio online.</p>
+
+      <!-- Player radio exemplu -->
+      <h3>🎵 Radio Test</h3>
+      <audio controls autoplay>
+        <source src="https://live.kissfm.ro/kissfm.aacp" type="audio/aac">
+        Browserul tău nu suportă redarea audio.
+      </audio>
+    </div>
+  </main>
+
+  <footer>
+    © 2025 • Creat de mine pe GitHub Pages
+  </footer>
+</body>
+</html>
