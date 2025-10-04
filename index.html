@@ -17,7 +17,7 @@ button:hover{background:#1b5e20;}
 .plot .crop{width:100%;height:100%;border-radius:50%;transform:scale(0);transition: transform 1s,background 1s;}
 .plot.planted .crop{background:linear-gradient(#8B4513,#FFD700);transform:scale(1);}
 .plot.ready .crop{background:linear-gradient(#228B22,#ADFF2F);}
-#animals-list,#guards-list{position:relative;width:100%;height:100px;}
+#animals-list{position:relative;width:100%;height:100px;}
 .animal,.fish,.thief,.guard{font-size:28px;position:absolute;transition:left 1s, top 1s;}
 #lake{width:100%;height:80px;background:lightblue;margin-top:10px;position:relative;overflow:hidden;}
 .harvester,.seeder{width:25px;height:25px;position:absolute;border-radius:4px;z-index:10;transition:left 0.5s,top 0.5s;}
@@ -67,7 +67,6 @@ th,td{padding:6px;text-align:center;}
   <div>🍎 Fructe: <span id="fruit-count">0</span></div>
   <div>💰 Monede: <span id="coins-count">0</span></div>
   <div id="animals-list"></div>
-  <div id="guards-list"></div>
   <div id="lake"></div>
 </div>
 
@@ -78,7 +77,6 @@ th,td{padding:6px;text-align:center;}
   <button onclick="buyAnimal('Găină',3)">Cumpără Găină (3 monede)</button>
   <button onclick="buyAnimal('Câine',4)">Cumpără Câine (4 monede)</button>
   <button onclick="buyAnimal('Pisică',4)">Cumpără Pisică (4 monede)</button>
-  <button onclick="addGuard()">Adaugă Paznic (6 monede)</button>
 </div>
 
 <!-- ADMIN -->
@@ -93,7 +91,7 @@ th,td{padding:6px;text-align:center;}
 </div>
 
 <script>
-//=== LOGIN / REGISTER - **nicio modificare față de ce ai trimis** ===
+//=== Logare si inregistrare neschimbata ===
 async function sha256Hex(str){const utf8=new TextEncoder().encode(str);const hash=await crypto.subtle.digest('SHA-256',utf8);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const STORAGE_USERS='farm_users_advanced';
 function loadUsers(){return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}');}
@@ -125,12 +123,19 @@ const fruitCount=document.getElementById('fruit-count');
 const coinsCount=document.getElementById('coins-count');
 const adminTable=document.getElementById('admin-table');
 const animalsListDiv=document.getElementById('animals-list');
-const guardsListDiv=document.getElementById('guards-list');
 const tractorBtn=document.getElementById('tractor-btn');
 
-let currentUser=null; let currentRole=null; let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],farmLevel:1,animals:[],guards:[]};
-const plantTimes={'Grâu':10,'Legume':15,'Fructe':20};
+let currentUser=null; let currentRole=null; let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],farmLevel:1,animals:[]};
 
+//=== Toate culturile noi ===
+const plantTimes = {
+  'Grâu':10,'Legume':15,'Fructe':20,
+  'Roșii':12,'Castraveți':12,'Morcov':15,'Ardei':15,
+  'Dovleac':20,'Pepene roșu':25,'Meri':30,'Pruni':30,
+  'Nuci':40,'Banani':35,'Ananas':35
+};
+
+//=== Logare / înregistrare neschimbată ===
 showRegBtn.addEventListener('click',()=>{registerArea.style.display='block';});
 cancelRegister.addEventListener('click',()=>{registerArea.style.display='none'; regMsg.textContent='';});
 registerBtn.addEventListener('click', async () => {
@@ -140,7 +145,7 @@ registerBtn.addEventListener('click', async () => {
   if(users[u]){regMsg.textContent='Username deja folosit!'; return;}
   const hash = await sha256Hex(p);
   const plots = Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
-  users[u] = {passHash:hash,role:role,grain:0,veg:0,fruit:0,coins:0,farmLevel:1,plots:plots,animals:[],guards:[]};
+  users[u] = {passHash:hash,role:role,grain:0,veg:0,fruit:0,coins:0,farmLevel:1,plots:plots,animals:[]};
   saveUsers(users);
   regMsg.textContent='Cont creat! Poți să te loghezi.';
   regUsername.value=''; regPassword.value=''; registerArea.style.display='none';
@@ -164,20 +169,19 @@ window.onload = () => {
   const users = loadUsers();
   if(savedUser && users[savedUser]){currentUser = savedUser; currentRole = users[savedUser].role; userData = JSON.parse(JSON.stringify(users[savedUser])); onLogin();}
 }
-
 function onLogin(){
   notLoggedDiv.style.display='none'; loggedDiv.style.display='block'; farmArea.style.display='block'; shopArea.style.display='block';
   meUsernameEl.textContent=currentUser; meRoleEl.textContent=currentRole;
   if(!userData.plots || userData.plots.length===0) userData.plots=Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
-  if(!userData.guards) userData.guards=[];
-  renderFarm(); updateResourceUI(); renderAnimals(); renderGuardsUI();
+  renderFarm(); updateResourceUI(); renderAnimals();
   if(currentRole==='admin'){adminArea.style.display='block'; renderAdminTable();}
   setInterval(updateLoop,1000);
 }
 
-//=== FERMA ===
+//=== Ferma și recolta ===
 function renderFarm(){
-  plotsDiv.innerHTML=''; userData.plots.forEach((p,i)=>{
+  plotsDiv.innerHTML='';
+  userData.plots.forEach((p,i)=>{
     const div=document.createElement('div'); div.className='plot';
     const crop=document.createElement('div'); crop.className='crop'; div.appendChild(crop);
     if(p.type && !p.ready) div.classList.add('planted');
@@ -189,14 +193,27 @@ function renderFarm(){
 function interactPlot(idx){
   const plot=userData.plots[idx];
   if(plot.ready){
-    if(plot.type==='Grâu') userData.grain+=1;
-    if(plot.type==='Legume') userData.veg+=1;
-    if(plot.type==='Fructe') userData.fruit+=1;
-    userData.coins+=1;
+    switch(plot.type){
+      case 'Grâu': userData.grain++; break;
+      case 'Legume': userData.veg++; break;
+      case 'Fructe': userData.fruit++; break;
+      case 'Roșii': userData.veg++; break;
+      case 'Castraveți': userData.veg++; break;
+      case 'Morcov': userData.veg++; break;
+      case 'Ardei': userData.veg++; break;
+      case 'Dovleac': userData.veg++; break;
+      case 'Pepene roșu': userData.fruit++; break;
+      case 'Meri': userData.fruit++; break;
+      case 'Pruni': userData.fruit++; break;
+      case 'Nuci': userData.fruit++; break;
+      case 'Banani': userData.fruit++; break;
+      case 'Ananas': userData.fruit++; break;
+    }
+    userData.coins++;
     plot.type=null; plot.ready=false; plot.plantedAt=null;
     saveUserData(); renderFarm(); updateResourceUI();
   } else if(!plot.type){
-    const choice=prompt('Ce vrei să plantezi? Grâu / Legume / Fructe','Grâu');
+    const choice=prompt('Ce vrei să plantezi? ' + Object.keys(plantTimes).join(' / '),'Grâu');
     if(choice && plantTimes[choice]){
       plot.type=choice; plot.plantedAt=Date.now(); plot.ready=false;
       saveUserData(); renderFarm();
@@ -206,8 +223,8 @@ function interactPlot(idx){
 function updatePlots(){userData.plots.forEach(p=>{if(p.type && !p.ready){if(Math.floor((Date.now()-p.plantedAt)/1000)>=plantTimes[p.type]){p.ready=true;}}});}
 tractorBtn.addEventListener('click',()=>{
   userData.plots.forEach(p=>{
-    if(p.ready){if(p.type==='Grâu') userData.grain+=1; if(p.type==='Legume') userData.veg+=1; if(p.type==='Fructe') userData.fruit+=1; userData.coins+=1; p.type=null; p.ready=false; p.plantedAt=null;}
-  }); saveUserData(); renderFarm(); updateResourceUI();
+    if(p.ready){interactPlot(userData.plots.indexOf(p));}
+  });
 });
 function buyAnimal(name,cost){if(userData.coins>=cost){userData.coins-=cost; userData.animals.push(name); saveUserData(); updateResourceUI(); renderAnimals();} else alert('Nu ai suficiente monede!');}
 function renderAnimals(){animalsListDiv.innerHTML=''; userData.animals.forEach(a=>{const span=document.createElement('span'); span.className='animal'; if(a==='Vacă') span.textContent='🐄'; if(a==='Găină') span.textContent='🐔'; if(a==='Câine') span.textContent='🐕'; if(a==='Pisică') span.textContent='🐈'; animalsListDiv.appendChild(span); span.style.left=Math.random()*plotsDiv.offsetWidth+'px'; span.style.top=Math.random()*plotsDiv.offsetHeight+'px'; setInterval(()=>{span.style.left=Math.random()*plotsDiv.offsetWidth+'px'; span.style.top=Math.random()*plotsDiv.offsetHeight+'px';},2000);});}
@@ -215,48 +232,25 @@ function updateResourceUI(){grainCount.textContent=userData.grain; vegCount.text
 function saveUserData(){const users=loadUsers(); if(!currentUser) return; users[currentUser]=JSON.parse(JSON.stringify(userData)); saveUsers(users);}
 function renderAdminTable(){}
 
-//=== PAZNICI / HOȚI ===
-function renderGuardsUI(){
-  guardsListDiv.innerHTML='';
-  userData.guards.forEach((g,i)=>{
-    const span=document.createElement('span'); span.className='guard'; span.textContent='🛡️';
-    guardsListDiv.appendChild(span);
-    span.style.left=(i*30)+'px'; span.style.top='0px';
-  });
-}
-function addGuard(){
-  if(userData.coins>=6){userData.coins-=6; userData.guards.push({id:Date.now()}); saveUserData(); renderGuardsUI();}
-  else alert('Nu ai suficiente monede!');
-}
-function removeGuard(){
-  userData.guards.pop(); saveUserData(); renderGuardsUI();
-}
-
-// HOȚI
-function spawnThief(){
-  const thief=document.createElement('span'); thief.className='thief'; thief.textContent='🦹';
-  document.body.appendChild(thief);
-  thief.style.left=Math.random()*(window.innerWidth-30)+'px';
-  thief.style.top=Math.random()*(window.innerHeight-30)+'px';
-
-  // Prinderea automată pentru 45 secunde
-  if(userData.guards.length>0){
-    setTimeout(()=>{
-      thief.remove();
-      alert('Hoț prins de paznici pentru 45 secunde!');
-    },45000);
-  } else {
-    setTimeout(()=>{thief.remove();},5000);
-  }
-}
-setInterval(spawnThief,8000);
-
-// ANIMAȚII
+//=== Hoți și paznici simplificați ===
 const lake=document.getElementById('lake');
 function spawnFish(){const fish=document.createElement('span'); fish.className='fish'; fish.textContent='🐟'; lake.appendChild(fish); fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px'; setInterval(()=>{fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px';},1000);}
 setInterval(spawnFish,2000);
 
-const harvester=document.createElement('div');harvester.className='harvester';document.body.appendChild(harvester);
-const seeder=document.createElement('div');seeder.className='seeder';document.body.appendChild(seeder);
-function moveHarvester(){const plots=document.querySelectorAll('.plot.ready');if(plots.length===0) return; const target=plots[Math.floor(Math.random()*plots.length)]; const rect=target.getBoundingClientRect(); harvester.style.left=rect.left+'px'; harvester.style.top=rect.top+'px'; setTimeout(()=>{target.classList.remove('ready','planted'); target.querySelector('.crop').style.transform='scale(0)';},500);}
-function moveSeeder(){const plots=document.querySelectorAll('.plot:not(.planted)');if(plots.length===0) return; const target=plots[Math.floor(Math.random()*plots.length)]; const rect=target.getBoundingClientRect(); seeder.style.left=rect.left+'px'; seeder.style.top=rect.top+'px'; setTimeout(()=>{target.classList.add('
+let guards = [{},{},{}];
+function renderGuards(){
+  let guardDiv=document.getElementById('guards');
+  if(!guardDiv){guardDiv=document.createElement('div'); guardDiv.id='guards'; document.body.appendChild(guardDiv);}
+  guardDiv.innerHTML='';
+  guards.forEach((g,i)=>{const span=document.createElement('span'); span.className='guard'; span.textContent='P'; guardDiv.appendChild(span); span.style.left=Math.random()*window.innerWidth+'px'; span.style.top=Math.random()*window.innerHeight+'px'; setInterval(()=>{span.style.left=Math.random()*window.innerWidth+'px'; span.style.top=Math.random()*window.innerHeight+'px';},2000);});
+}
+renderGuards();
+
+// spawn hoți
+function spawnThief(){const thief=document.createElement('span'); thief.className='thief'; thief.textContent='H'; document.body.appendChild(thief); thief.style.left=Math.random()*(window.innerWidth-30)+'px'; thief.style.top=Math.random()*(window.innerHeight-30)+'px'; setTimeout(()=>{thief.remove();},5000);}
+setInterval(spawnThief,8000);
+
+// butoane admin
+const dismissBtn=document.createElement('button'); dismissBtn.textContent='Concediază toți paznicii'; dismissBtn.style.background='#f44336'; dismissBtn.style.color='white'; dismissBtn.style.margin='5px'; dismissBtn.onclick=()=>{guards=[]; renderGuards();};
+const catchBtn=document.createElement('button'); catchBtn.textContent='Prinde hoții'; catchBtn.style.background='#4caf50'; catchBtn.style.color='white'; catchBtn.style.margin='5px'; catchBtn.onclick=()=>{document.querySelectorAll('.thief').forEach(t=>t.remove());};
+adminArea.appendChild(dismissBtn); adminArea.appendChild(c
