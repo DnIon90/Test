@@ -2,106 +2,158 @@
 <html lang="ro">
 <head>
 <meta charset="UTF-8">
-<title>Ferma Avansată - Test Login</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Ferma Avansată a lui Ion</title>
 <style>
-body{font-family:Arial,sans-serif;background:#d0f0c0;padding:20px;}
-input,button{padding:6px;margin:3px;}
-button{cursor:pointer;}
-#welcome-div{display:none;}
+body{font-family:Arial,sans-serif;background:#d0f0c0;margin:0;padding:20px;}
+h1,h2,h3{color:#2e7d32;margin:5px 0;}
+input,button,select{padding:6px;border-radius:5px;border:1px solid #ccc;font-size:14px;}
+button{background:#2e7d32;color:#fff;border:0;cursor:pointer;}
+button:hover{background:#1b5e20;}
+.muted{color:#666;font-size:13px;}
+#login-area,#farm-area,#shop-area,#admin-area,#leaderboard-area{margin-bottom:20px;}
+#plots{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0;}
+.plot{width:60px;height:60px;background:#a0522d;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;position:relative;font-weight:bold;transition:background 0.5s;}
+.plot img{width:90%;height:90%;display:block;margin:auto;}
+.plot span{position:absolute;bottom:0;font-size:11px;color:#000;}
+.plot.planted{background:#fdd835;transition:background 2s;}
+.plot.ready{background:#4caf50;transition:background 2s;}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+table,th,td{border:1px solid #ccc;}
+th,td{padding:6px;text-align:center;}
+.admin-btn{background:#d32f2f;}
+.first-place{background:gold;}
+#animals-list img{width:40px;height:40px;margin:2px;animation:move 5s infinite alternate;}
+#guards img{width:40px;height:40px;margin-right:5px;animation:patrol 4s infinite alternate;}
+@keyframes move {0%{transform:translateY(0);}100%{transform:translateY(-10px);}}
+@keyframes patrol {0%{transform:translateX(0);}100%{transform:translateX(20px);}}
 </style>
 </head>
 <body>
+<h1>🌾 Ferma Avansată a lui Ion</h1>
 
-<h1>Ferma Avansată - Login / Registrare</h1>
-
-<div id="register-div">
-  <h3>Înregistrează</h3>
-  <input id="reg-user" placeholder="Username"><br>
-  <input id="reg-pass" placeholder="Parolă" type="password"><br>
-  <button id="reg-btn">Creează cont</button>
-  <p id="reg-msg" style="color:green;"></p>
+<!-- LOGIN / REGISTER -->
+<div id="login-area">
+  <div id="not-logged">
+    <input id="login-username" placeholder="Username"><br><br>
+    <input id="login-password" placeholder="Parolă" type="password"><br><br>
+    <button id="login-btn">Loghează</button>
+    <button id="show-register-btn" style="background:#388e3c">Înregistrează</button>
+    <div id="register-area" style="display:none;margin-top:10px;">
+      <input id="reg-username" placeholder="Username"><br><br>
+      <input id="reg-password" placeholder="Parolă" type="password"><br><br>
+      <select id="reg-role"><option value="user">User</option><option value="admin">Admin</option></select><br><br>
+      <button id="register-btn">Creează cont</button>
+      <button id="cancel-register">Anulează</button>
+      <div id="reg-msg" class="muted"></div>
+    </div>
+  </div>
+  <div id="logged" style="display:none;">
+    <p class="muted">Logat ca <strong id="me-username"></strong> (<span id="me-role"></span>)</p>
+    <button id="logout-btn">Deconectează</button>
+  </div>
 </div>
 
-<div id="login-div">
-  <h3>Login</h3>
-  <input id="login-user" placeholder="Username"><br>
-  <input id="login-pass" placeholder="Parolă" type="password"><br>
-  <button id="login-btn">Loghează</button>
-  <p id="login-msg" style="color:red;"></p>
+<!-- FARM -->
+<div id="farm-area" style="display:none;">
+  <h2>🪴 Parcela ta de pământ</h2>
+  <div id="guards">
+    <img src="https://i.imgur.com/5X3PnDz.png" title="Paznic">
+  </div>
+  <button id="tractor-btn">🚜 Recoltează toate plantele gata</button>
+  <div class="muted" id="farm-level">Nivel fermă: 1</div>
+  <div id="plots"></div>
+  <h3>Resurse colectate</h3>
+  <div>🌾 Grâu: <span id="grain-count">0</span></div>
+  <div>🌽 Porumb: <span id="corn-count">0</span></div>
+  <div>🍎 Mere: <span id="apple-count">0</span></div>
+  <div>🍊 Portocale: <span id="orange-count">0</span></div>
+  <div>🍋 Lămâi: <span id="lemon-count">0</span></div>
+  <div>💰 Monede: <span id="coins-count">0</span></div>
+  <h3>Animale</h3>
+  <div id="animals-list"></div>
 </div>
 
-<div id="welcome-div">
-  <h3>Bine ai venit, <span id="user-name"></span>!</h3>
-  <button id="logout-btn">Deconectează</button>
+<!-- SHOP -->
+<div id="shop-area" style="display:none;">
+  <h2>🛒 Magazin</h2>
+  <button onclick="buyAnimal('Câine',5)">Cumpără Câine (5 monede)</button>
+  <button onclick="buyAnimal('Pisică',5)">Cumpără Pisică (5 monede)</button>
+  <button onclick="buyAnimal('Cal',10)">Cumpără Cal (10 monede)</button>
+  <button onclick="buyAnimal('Porc',5)">Cumpără Porc (5 monede)</button>
+  <button onclick="buyAnimal('Găină',3)">Cumpără Găină (3 monede)</button>
+  <button onclick="buyAnimal('Pește',2)">Cumpără Pește (2 monede)</button>
+</div>
+
+<!-- ADMIN -->
+<div id="admin-area" style="display:none;">
+  <h2>🔧 Panou Administrator & Statistici</h2>
+  <table>
+    <thead>
+      <tr><th>Username</th><th>Rol</th><th>Grâu</th><th>Porumb</th><th>Mere</th><th>Portocale</th><th>Lămâi</th><th>Monede</th><th>Fermă</th><th>Acțiuni</th></tr>
+    </thead>
+    <tbody id="admin-table"></tbody>
+  </table>
 </div>
 
 <script>
-// SHA-256 pentru parolă
-async function sha256(str){
-  const buf=new TextEncoder().encode(str);
-  const hash=await crypto.subtle.digest('SHA-256',buf);
-  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
+async function sha256Hex(str){const utf8=new TextEncoder().encode(str);const hash=await crypto.subtle.digest('SHA-256',utf8);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
+const STORAGE_USERS='farm_users_mega';
+function loadUsers(){return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}');}
+function saveUsers(u){localStorage.setItem(STORAGE_USERS,JSON.stringify(u));}
 
-// LocalStorage
-const STORAGE='farm_users_test';
-function loadUsers(){ return JSON.parse(localStorage.getItem(STORAGE)||'{}'); }
-function saveUsers(u){ localStorage.setItem(STORAGE,JSON.stringify(u)); }
+// Elemente UI
+const loginUsername=document.getElementById('login-username');
+const loginPassword=document.getElementById('login-password');
+const loginBtn=document.getElementById('login-btn');
+const showRegBtn=document.getElementById('show-register-btn');
+const registerArea=document.getElementById('register-area');
+const regUsername=document.getElementById('reg-username');
+const regPassword=document.getElementById('reg-password');
+const regRole=document.getElementById('reg-role');
+const registerBtn=document.getElementById('register-btn');
+const cancelRegister=document.getElementById('cancel-register');
+const regMsg=document.getElementById('reg-msg');
+const notLoggedDiv=document.getElementById('not-logged');
+const loggedDiv=document.getElementById('logged');
+const meUsernameEl=document.getElementById('me-username');
+const meRoleEl=document.getElementById('me-role');
+const logoutBtn=document.getElementById('logout-btn');
+const farmArea=document.getElementById('farm-area');
+const shopArea=document.getElementById('shop-area');
+const adminArea=document.getElementById('admin-area');
+const plotsDiv=document.getElementById('plots');
+const grainCount=document.getElementById('grain-count');
+const cornCount=document.getElementById('corn-count');
+const appleCount=document.getElementById('apple-count');
+const orangeCount=document.getElementById('orange-count');
+const lemonCount=document.getElementById('lemon-count');
+const coinsCount=document.getElementById('coins-count');
+const adminTable=document.getElementById('admin-table');
+const animalsListDiv=document.getElementById('animals-list');
+const tractorBtn=document.getElementById('tractor-btn');
+
+let currentUser=null;
+let currentRole=null;
+let userData={grain:0,corn:0,apple:0,orange:0,lemon:0,coins:0,plots:[],farmLevel:1,animals:[]};
+
+const plantTimes={'Grâu':10,'Porumb':15,'Mere':20,'Portocale':25,'Lămâi':30};
+const plantImgs={'Grâu':'https://i.imgur.com/7bM9a5K.png','Porumb':'https://i.imgur.com/6i6ThmF.png','Mere':'https://i.imgur.com/9UZVJTb.png','Portocale':'https://i.imgur.com/IaVxwN1.png','Lămâi':'https://i.imgur.com/WWvhtqF.png'};
+const animalImgs={'Câine':'https://i.imgur.com/3P5ZxAq.png','Pisică':'https://i.imgur.com/fWb3W3u.png','Cal':'https://i.imgur.com/jwXUbs0.png','Porc':'https://i.imgur.com/77bGpR8.png','Găină':'https://i.imgur.com/VXY1OBG.png','Pește':'https://i.imgur.com/EmzjZku.png'};
 
 // Registrare
-document.getElementById('reg-btn').onclick=async ()=>{
-  const u=document.getElementById('reg-user').value.trim();
-  const p=document.getElementById('reg-pass').value;
-  const msg=document.getElementById('reg-msg');
-  if(!u||!p){ msg.textContent='Completează toate câmpurile!'; msg.style.color='red'; return; }
-  const users=loadUsers();
-  if(users[u]){ msg.textContent='Username deja folosit!'; msg.style.color='red'; return; }
-  const hash=await sha256(p);
-  users[u]={passHash:hash,coins:5,grain:0,veg:0,fruit:0,animals:[]};
-  saveUsers(users);
-  msg.textContent='Cont creat! Poți să te loghezi.';
-  msg.style.color='green';
-  document.getElementById('reg-user').value='';
-  document.getElementById('reg-pass').value='';
-}
-
-// Login
-document.getElementById('login-btn').onclick=async ()=>{
-  const u=document.getElementById('login-user').value.trim();
-  const p=document.getElementById('login-pass').value;
-  const msg=document.getElementById('login-msg');
-  const users=loadUsers();
-  if(!users[u]){ msg.textContent='Utilizator inexistent'; return; }
-  const hash=await sha256(p);
-  if(hash!==users[u].passHash){ msg.textContent='Parolă greșită'; return; }
-  // Login reușit
-  document.getElementById('login-div').style.display='none';
-  document.getElementById('register-div').style.display='none';
-  document.getElementById('welcome-div').style.display='block';
-  document.getElementById('user-name').textContent=u;
-  localStorage.setItem('currentUser',u);
-}
-
-// Logout
-document.getElementById('logout-btn').onclick=()=>{
-  document.getElementById('login-div').style.display='block';
-  document.getElementById('register-div').style.display='block';
-  document.getElementById('welcome-div').style.display='none';
-  localStorage.removeItem('currentUser');
-}
-
-// Auto-login dacă există sesiune
-window.onload = () => {
-  const savedUser = localStorage.getItem('currentUser');
+showRegBtn.addEventListener('click',()=>{registerArea.style.display='block';});
+cancelRegister.addEventListener('click',()=>{registerArea.style.display='none'; regMsg.textContent='';});
+registerBtn.addEventListener('click', async () => {
+  const u = regUsername.value.trim();
+  const p = regPassword.value;
+  const role = regRole.value;
+  if(!u || !p){regMsg.textContent='Completează toate câmpurile!'; return;}
   const users = loadUsers();
-  if(savedUser && users[savedUser]){
-    document.getElementById('login-div').style.display='none';
-    document.getElementById('register-div').style.display='none';
-    document.getElementById('welcome-div').style.display='block';
-    document.getElementById('user-name').textContent = savedUser;
-  }
-}
-</script>
-
-</body>
-</html>
+  if(users[u]){regMsg.textContent='Username deja folosit!'; return;}
+  const hash = await sha256Hex(p);
+  const plots = Array(20).fill().map(()=>({type:null,plantedAt:null,ready:false}));
+  users[u] = {passHash:hash,role:role,grain:0,corn:0,apple:0,orange:0,lemon:0,coins:0,farmLevel:1,plots:plots,animals:[]};
+  saveUsers(users);
+  regMsg.textContent='Cont creat! Poți să te loghezi.';
+  regUsername.value=''; regPassword
