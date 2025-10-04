@@ -11,13 +11,13 @@ input,button,select{padding:6px;border-radius:5px;border:1px solid #ccc;font-siz
 button{background:#2e7d32;color:#fff;border:0;cursor:pointer;}
 button:hover{background:#1b5e20;}
 .muted{color:#666;font-size:13px;}
-#login-area,#farm-area,#admin-area,#shop-area{margin-bottom:20px;}
+#login-area,#farm-area,#admin-area,#shop-area,#leaderboard-area{margin-bottom:20px;}
 #plots{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0;position:relative;width:100%;}
 .plot{width:60px;height:60px;background:#a0522d;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;}
 .plot .crop{width:100%;height:100%;border-radius:50%;transform:scale(0);transition: transform 1s,background 1s;}
 .plot.planted .crop{background:linear-gradient(#8B4513,#FFD700);transform:scale(1);}
 .plot.ready .crop{background:linear-gradient(#228B22,#ADFF2F);}
-#animals-list{position:relative;width:100%;height:100px;}
+#animals-list,#guards-list{position:relative;width:100%;height:100px;}
 .animal,.fish,.thief,.guard{font-size:28px;position:absolute;transition:left 1s, top 1s;}
 #lake{width:100%;height:80px;background:lightblue;margin-top:10px;position:relative;overflow:hidden;}
 .harvester,.seeder{width:25px;height:25px;position:absolute;border-radius:4px;z-index:10;transition:left 0.5s,top 0.5s;}
@@ -28,7 +28,6 @@ table,th,td{border:1px solid #ccc;}
 th,td{padding:6px;text-align:center;}
 .admin-btn{background:#d32f2f;}
 .first-place{background:gold;}
-#guards-panel{margin-top:10px;}
 </style>
 </head>
 <body>
@@ -68,13 +67,8 @@ th,td{padding:6px;text-align:center;}
   <div>🍎 Fructe: <span id="fruit-count">0</span></div>
   <div>💰 Monede: <span id="coins-count">0</span></div>
   <div id="animals-list"></div>
+  <div id="guards-list"></div>
   <div id="lake"></div>
-  <div id="guards-panel">
-    <button onclick="hireGuard()">👮 Angajează Paznic</button>
-    <button onclick="fireGuard()">❌ Concediază Paznic</button>
-    <button onclick="catchThieves()">🕵️‍♂️ Prinde Hoții</button>
-    <div id="guards-list"></div>
-  </div>
 </div>
 
 <!-- SHOP -->
@@ -84,6 +78,7 @@ th,td{padding:6px;text-align:center;}
   <button onclick="buyAnimal('Găină',3)">Cumpără Găină (3 monede)</button>
   <button onclick="buyAnimal('Câine',4)">Cumpără Câine (4 monede)</button>
   <button onclick="buyAnimal('Pisică',4)">Cumpără Pisică (4 monede)</button>
+  <button onclick="addGuard()">Adaugă Paznic (6 monede)</button>
 </div>
 
 <!-- ADMIN -->
@@ -98,7 +93,7 @@ th,td{padding:6px;text-align:center;}
 </div>
 
 <script>
-//==== Logare/Parolă neschimbat ====
+//=== LOGIN / REGISTER - **nicio modificare față de ce ai trimis** ===
 async function sha256Hex(str){const utf8=new TextEncoder().encode(str);const hash=await crypto.subtle.digest('SHA-256',utf8);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const STORAGE_USERS='farm_users_advanced';
 function loadUsers(){return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}');}
@@ -130,14 +125,12 @@ const fruitCount=document.getElementById('fruit-count');
 const coinsCount=document.getElementById('coins-count');
 const adminTable=document.getElementById('admin-table');
 const animalsListDiv=document.getElementById('animals-list');
-const tractorBtn=document.getElementById('tractor-btn');
 const guardsListDiv=document.getElementById('guards-list');
+const tractorBtn=document.getElementById('tractor-btn');
 
-let currentUser=null; let currentRole=null; let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],farmLevel:1,animals:[]};
+let currentUser=null; let currentRole=null; let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],farmLevel:1,animals:[],guards:[]};
 const plantTimes={'Grâu':10,'Legume':15,'Fructe':20};
-let guards=[]; 
 
-//==== Eventuri logare si inregistrare ====
 showRegBtn.addEventListener('click',()=>{registerArea.style.display='block';});
 cancelRegister.addEventListener('click',()=>{registerArea.style.display='none'; regMsg.textContent='';});
 registerBtn.addEventListener('click', async () => {
@@ -147,7 +140,7 @@ registerBtn.addEventListener('click', async () => {
   if(users[u]){regMsg.textContent='Username deja folosit!'; return;}
   const hash = await sha256Hex(p);
   const plots = Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
-  users[u] = {passHash:hash,role:role,grain:0,veg:0,fruit:0,coins:0,farmLevel:1,plots:plots,animals:[]};
+  users[u] = {passHash:hash,role:role,grain:0,veg:0,fruit:0,coins:0,farmLevel:1,plots:plots,animals:[],guards:[]};
   saveUsers(users);
   regMsg.textContent='Cont creat! Poți să te loghezi.';
   regUsername.value=''; regPassword.value=''; registerArea.style.display='none';
@@ -176,12 +169,13 @@ function onLogin(){
   notLoggedDiv.style.display='none'; loggedDiv.style.display='block'; farmArea.style.display='block'; shopArea.style.display='block';
   meUsernameEl.textContent=currentUser; meRoleEl.textContent=currentRole;
   if(!userData.plots || userData.plots.length===0) userData.plots=Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
-  renderFarm(); updateResourceUI(); renderAnimals(); renderGuardsPanel();
+  if(!userData.guards) userData.guards=[];
+  renderFarm(); updateResourceUI(); renderAnimals(); renderGuardsUI();
   if(currentRole==='admin'){adminArea.style.display='block'; renderAdminTable();}
   setInterval(updateLoop,1000);
 }
 
-//==== Ferma ====
+//=== FERMA ===
 function renderFarm(){
   plotsDiv.innerHTML=''; userData.plots.forEach((p,i)=>{
     const div=document.createElement('div'); div.className='plot';
@@ -221,46 +215,48 @@ function updateResourceUI(){grainCount.textContent=userData.grain; vegCount.text
 function saveUserData(){const users=loadUsers(); if(!currentUser) return; users[currentUser]=JSON.parse(JSON.stringify(userData)); saveUsers(users);}
 function renderAdminTable(){}
 
-//==== Paznici și Hoți ====
-let activeThieves=[];
-
-function renderGuardsPanel(){
+//=== PAZNICI / HOȚI ===
+function renderGuardsUI(){
   guardsListDiv.innerHTML='';
-  guards.forEach((g,i)=>{
-    const span=document.createElement('span'); span.textContent='🦸'; span.style.marginRight='5px'; guardsListDiv.appendChild(span);
+  userData.guards.forEach((g,i)=>{
+    const span=document.createElement('span'); span.className='guard'; span.textContent='🛡️';
+    guardsListDiv.appendChild(span);
+    span.style.left=(i*30)+'px'; span.style.top='0px';
   });
 }
+function addGuard(){
+  if(userData.coins>=6){userData.coins-=6; userData.guards.push({id:Date.now()}); saveUserData(); renderGuardsUI();}
+  else alert('Nu ai suficiente monede!');
+}
+function removeGuard(){
+  userData.guards.pop(); saveUserData(); renderGuardsUI();
+}
 
-function hireGuard(){guards.push({}); renderGuardsPanel();}
-function fireGuard(){guards.pop(); renderGuardsPanel();}
-function spawnThief(){const thief=document.createElement('span'); thief.className='thief'; thief.textContent='🦹'; document.body.appendChild(thief); thief.style.left=Math.random()*(window.innerWidth-30)+'px'; thief.style.top=Math.random()*(window.innerHeight-30)+'px'; activeThieves.push(thief); setTimeout(()=>{if(thief.parentNode){thief.remove(); activeThieves=activeThieves.filter(t=>t!==thief);}},5000);}
+// HOȚI
+function spawnThief(){
+  const thief=document.createElement('span'); thief.className='thief'; thief.textContent='🦹';
+  document.body.appendChild(thief);
+  thief.style.left=Math.random()*(window.innerWidth-30)+'px';
+  thief.style.top=Math.random()*(window.innerHeight-30)+'px';
+
+  // Prinderea automată pentru 45 secunde
+  if(userData.guards.length>0){
+    setTimeout(()=>{
+      thief.remove();
+      alert('Hoț prins de paznici pentru 45 secunde!');
+    },45000);
+  } else {
+    setTimeout(()=>{thief.remove();},5000);
+  }
+}
 setInterval(spawnThief,8000);
 
-function catchThieves(){
-  activeThieves.forEach(thief=>{
-    if(thief.parentNode){
-      thief.textContent='🔒';
-      setTimeout(()=>{
-        if(thief.parentNode) thief.remove();
-      },45000); // 45 sec
-    }
-  });
-  activeThieves=[];
-}
-
-//=== Animatii Hoți, Tractoare, Pesti, Paznici ===
+// ANIMAȚII
 const lake=document.getElementById('lake');
 function spawnFish(){const fish=document.createElement('span'); fish.className='fish'; fish.textContent='🐟'; lake.appendChild(fish); fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px'; setInterval(()=>{fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px';},1000);}
 setInterval(spawnFish,2000);
 
-function renderGuards(){
-  let guardDiv=document.getElementById('guards');
-  if(!guardDiv){guardDiv=document.createElement('div'); guardDiv.id='guards'; document.body.appendChild(guardDiv);}
-  guardDiv.innerHTML='';
-  guards.forEach(()=>{const g=document.createElement('span'); g.className='guard'; g.textContent='🦸'; guardDiv.appendChild(g); g.style.left=Math.random()*window.innerWidth+'px'; g.style.top=Math.random()*window.innerHeight+'px'; setInterval(()=>{g.style.left=Math.random()*window.innerWidth+'px'; g.style.top=Math.random()*window.innerHeight+'px';},2000);});
-}
-renderGuards();
-
 const harvester=document.createElement('div');harvester.className='harvester';document.body.appendChild(harvester);
 const seeder=document.createElement('div');seeder.className='seeder';document.body.appendChild(seeder);
-function moveHarvester(){const plots=document.querySelectorAll('.plot.ready');if(plots.length===0) return; const target=plots[Math.floor(Math.random
+function moveHarvester(){const plots=document.querySelectorAll('.plot.ready');if(plots.length===0) return; const target=plots[Math.floor(Math.random()*plots.length)]; const rect=target.getBoundingClientRect(); harvester.style.left=rect.left+'px'; harvester.style.top=rect.top+'px'; setTimeout(()=>{target.classList.remove('ready','planted'); target.querySelector('.crop').style.transform='scale(0)';},500);}
+function moveSeeder(){const plots=document.querySelectorAll('.plot:not(.planted)');if(plots.length===0) return; const target=plots[Math.floor(Math.random()*plots.length)]; const rect=target.getBoundingClientRect(); seeder.style.left=rect.left+'px'; seeder.style.top=rect.top+'px'; setTimeout(()=>{target.classList.add('
