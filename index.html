@@ -123,7 +123,7 @@ registerBtn.addEventListener('click',async()=>{
   const users=loadUsers();
   if(users[u]){regMsg.textContent='Username deja folosit';return;}
   const hash=await sha256Hex(p);
-  const plots=Array(6).fill().map(()=>({type:null,plantedAt:null,ready:false}));
+  const plots=Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
   users[u]={passHash:hash,role:role,grain:0,veg:0,fruit:0,plots:plots,farmLevel:1};
   saveUsers(users);
   regMsg.textContent='Cont creat! Poți să te loghezi.';
