@@ -66,8 +66,15 @@ th,td{padding:6px;text-align:center;}
   <div>🥕 Legume: <span id="veg-count">0</span></div>
   <div>🍎 Fructe: <span id="fruit-count">0</span></div>
   <div>💰 Monede: <span id="coins-count">0</span></div>
+  
   <div id="animals-list"></div>
   <div id="lake"></div>
+  
+  <div id="guard-controls" style="margin-top:10px;">
+    <button onclick="hireGuard()">Angajează paznic (5 monede)</button>
+    <button onclick="fireGuard()">Concediază un paznic</button>
+    <div class="muted">Număr paznici: <span id="guard-count">0</span></div>
+  </div>
 </div>
 
 <!-- SHOP -->
@@ -91,7 +98,7 @@ th,td{padding:6px;text-align:center;}
 </div>
 
 <script>
-//=== Logare si inregistrare neschimbata ===
+// === LOGIN/REGISTER RAMANE NEMSCHIMBAT ===
 async function sha256Hex(str){const utf8=new TextEncoder().encode(str);const hash=await crypto.subtle.digest('SHA-256',utf8);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const STORAGE_USERS='farm_users_advanced';
 function loadUsers(){return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}');}
@@ -121,21 +128,20 @@ const grainCount=document.getElementById('grain-count');
 const vegCount=document.getElementById('veg-count');
 const fruitCount=document.getElementById('fruit-count');
 const coinsCount=document.getElementById('coins-count');
-const adminTable=document.getElementById('admin-table');
 const animalsListDiv=document.getElementById('animals-list');
 const tractorBtn=document.getElementById('tractor-btn');
+const guardCountEl=document.getElementById('guard-count');
 
-let currentUser=null; let currentRole=null; let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],farmLevel:1,animals:[]};
+let currentUser=null;
+let currentRole=null;
+let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],farmLevel:1,animals:[],guards:[]};
 
-//=== Toate culturile noi ===
-const plantTimes = {
-  'Grâu':10,'Legume':15,'Fructe':20,
-  'Roșii':12,'Castraveți':12,'Morcov':15,'Ardei':15,
-  'Dovleac':20,'Pepene roșu':25,'Meri':30,'Pruni':30,
-  'Nuci':40,'Banani':35,'Ananas':35
+const plantTimes={
+  'Grâu':10,'Legume':15,'Fructe':20,'Roșii':12,'Castraveți':12,'Morcov':15,'Ardei':15,'Dovleac':20,'Pepene roșu':25,
+  'Meri':30,'Pruni':30,'Nuci':40,'Banani':35,'Ananas':35
 };
 
-//=== Logare / înregistrare neschimbată ===
+// === LOGARE / REGISTER ===
 showRegBtn.addEventListener('click',()=>{registerArea.style.display='block';});
 cancelRegister.addEventListener('click',()=>{registerArea.style.display='none'; regMsg.textContent='';});
 registerBtn.addEventListener('click', async () => {
@@ -145,7 +151,7 @@ registerBtn.addEventListener('click', async () => {
   if(users[u]){regMsg.textContent='Username deja folosit!'; return;}
   const hash = await sha256Hex(p);
   const plots = Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
-  users[u] = {passHash:hash,role:role,grain:0,veg:0,fruit:0,coins:0,farmLevel:1,plots:plots,animals:[]};
+  users[u] = {passHash:hash,role:role,grain:0,veg:0,fruit:0,coins:0,farmLevel:1,plots:plots,animals:[],guards:[]};
   saveUsers(users);
   regMsg.textContent='Cont creat! Poți să te loghezi.';
   regUsername.value=''; regPassword.value=''; registerArea.style.display='none';
@@ -169,16 +175,18 @@ window.onload = () => {
   const users = loadUsers();
   if(savedUser && users[savedUser]){currentUser = savedUser; currentRole = users[savedUser].role; userData = JSON.parse(JSON.stringify(users[savedUser])); onLogin();}
 }
+
 function onLogin(){
   notLoggedDiv.style.display='none'; loggedDiv.style.display='block'; farmArea.style.display='block'; shopArea.style.display='block';
   meUsernameEl.textContent=currentUser; meRoleEl.textContent=currentRole;
   if(!userData.plots || userData.plots.length===0) userData.plots=Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
-  renderFarm(); updateResourceUI(); renderAnimals();
+  if(!userData.guards) userData.guards = [];
+  renderFarm(); updateResourceUI(); renderAnimals(); renderGuards();
   if(currentRole==='admin'){adminArea.style.display='block'; renderAdminTable();}
   setInterval(updateLoop,1000);
 }
 
-//=== Ferma și recolta ===
+// === FERMA ===
 function renderFarm(){
   plotsDiv.innerHTML='';
   userData.plots.forEach((p,i)=>{
@@ -190,67 +198,89 @@ function renderFarm(){
     plotsDiv.appendChild(div);
   });
 }
+
 function interactPlot(idx){
   const plot=userData.plots[idx];
   if(plot.ready){
-    switch(plot.type){
-      case 'Grâu': userData.grain++; break;
-      case 'Legume': userData.veg++; break;
-      case 'Fructe': userData.fruit++; break;
-      case 'Roșii': userData.veg++; break;
-      case 'Castraveți': userData.veg++; break;
-      case 'Morcov': userData.veg++; break;
-      case 'Ardei': userData.veg++; break;
-      case 'Dovleac': userData.veg++; break;
-      case 'Pepene roșu': userData.fruit++; break;
-      case 'Meri': userData.fruit++; break;
-      case 'Pruni': userData.fruit++; break;
-      case 'Nuci': userData.fruit++; break;
-      case 'Banani': userData.fruit++; break;
-      case 'Ananas': userData.fruit++; break;
-    }
-    userData.coins++;
+    if(plot.type==='Grâu') userData.grain+=1;
+    else if(plot.type==='Legume') userData.veg+=1;
+    else if(plot.type==='Fructe') userData.fruit+=1;
+    else userData.veg+=1; // restul fructe/legume
+    userData.coins+=1;
     plot.type=null; plot.ready=false; plot.plantedAt=null;
     saveUserData(); renderFarm(); updateResourceUI();
   } else if(!plot.type){
-    const choice=prompt('Ce vrei să plantezi? ' + Object.keys(plantTimes).join(' / '),'Grâu');
+    const choice=prompt('Ce vrei să plantezi? Grâu / Legume / Fructe / Roșii / Castraveți / Morcov / Ardei / Dovleac / Pepene roșu / Meri / Pruni / Nuci / Banani / Ananas','Grâu');
     if(choice && plantTimes[choice]){
       plot.type=choice; plot.plantedAt=Date.now(); plot.ready=false;
       saveUserData(); renderFarm();
     }
   }
 }
-function updatePlots(){userData.plots.forEach(p=>{if(p.type && !p.ready){if(Math.floor((Date.now()-p.plantedAt)/1000)>=plantTimes[p.type]){p.ready=true;}}});}
+
+function updatePlots(){
+  userData.plots.forEach(p=>{
+    if(p.type && !p.ready){if(Math.floor((Date.now()-p.plantedAt)/1000)>=plantTimes[p.type]){p.ready=true;}}
+  });
+}
+
 tractorBtn.addEventListener('click',()=>{
   userData.plots.forEach(p=>{
-    if(p.ready){interactPlot(userData.plots.indexOf(p));}
-  });
+    if(p.ready){if(p.type==='Grâu') userData.grain+=1; else if(p.type==='Legume') userData.veg+=1; else if(p.type==='Fructe') userData.fruit+=1; else userData.veg+=1;
+    userData.coins+=1; p.type=null; p.ready=false; p.plantedAt=null;}
+  }); saveUserData(); renderFarm(); updateResourceUI();
 });
+
 function buyAnimal(name,cost){if(userData.coins>=cost){userData.coins-=cost; userData.animals.push(name); saveUserData(); updateResourceUI(); renderAnimals();} else alert('Nu ai suficiente monede!');}
-function renderAnimals(){animalsListDiv.innerHTML=''; userData.animals.forEach(a=>{const span=document.createElement('span'); span.className='animal'; if(a==='Vacă') span.textContent='🐄'; if(a==='Găină') span.textContent='🐔'; if(a==='Câine') span.textContent='🐕'; if(a==='Pisică') span.textContent='🐈'; animalsListDiv.appendChild(span); span.style.left=Math.random()*plotsDiv.offsetWidth+'px'; span.style.top=Math.random()*plotsDiv.offsetHeight+'px'; setInterval(()=>{span.style.left=Math.random()*plotsDiv.offsetWidth+'px'; span.style.top=Math.random()*plotsDiv.offsetHeight+'px';},2000);});}
-function updateResourceUI(){grainCount.textContent=userData.grain; vegCount.textContent=userData.veg; fruitCount.textContent=userData.fruit; coinsCount.textContent=userData.coins;}
-function saveUserData(){const users=loadUsers(); if(!currentUser) return; users[currentUser]=JSON.parse(JSON.stringify(userData)); saveUsers(users);}
-function renderAdminTable(){}
 
-//=== Hoți și paznici simplificați ===
-const lake=document.getElementById('lake');
-function spawnFish(){const fish=document.createElement('span'); fish.className='fish'; fish.textContent='🐟'; lake.appendChild(fish); fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px'; setInterval(()=>{fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px';},1000);}
-setInterval(spawnFish,2000);
+function renderAnimals(){
+  animalsListDiv.innerHTML='';
+  userData.animals.forEach(a=>{
+    const span=document.createElement('span'); span.className='animal';
+    if(a==='Vacă') span.textContent='🐄'; if(a==='Găină') span.textContent='🐔'; if(a==='Câine') span.textContent='🐕'; if(a==='Pisică') span.textContent='🐈';
+    animalsListDiv.appendChild(span);
+    span.style.left=Math.random()*plotsDiv.offsetWidth+'px';
+    span.style.top=Math.random()*plotsDiv.offsetHeight+'px';
+    setInterval(()=>{span.style.left=Math.random()*plotsDiv.offsetWidth+'px'; span.style.top=Math.random()*plotsDiv.offsetHeight+'px';},2000);
+  });
+}
 
-let guards = [{},{},{}];
+function updateResourceUI(){
+  grainCount.textContent=userData.grain; vegCount.textContent=userData.veg; fruitCount.textContent=userData.fruit; coinsCount.textContent=userData.coins;
+}
+
+// === PAZNICI ===
+function hireGuard(){
+  if(userData.coins >=5){userData.coins-=5; userData.guards.push('🛡️'); saveUserData(); updateResourceUI(); renderGuards();}
+  else alert('Nu ai suficiente monede!');
+}
+
+function fireGuard(){
+  if(userData.guards.length>0){userData.guards.pop(); saveUserData(); renderGuards();}
+  else alert('Nu ai paznici de concediat!');
+}
+
 function renderGuards(){
   let guardDiv=document.getElementById('guards');
   if(!guardDiv){guardDiv=document.createElement('div'); guardDiv.id='guards'; document.body.appendChild(guardDiv);}
   guardDiv.innerHTML='';
-  guards.forEach((g,i)=>{const span=document.createElement('span'); span.className='guard'; span.textContent='P'; guardDiv.appendChild(span); span.style.left=Math.random()*window.innerWidth+'px'; span.style.top=Math.random()*window.innerHeight+'px'; setInterval(()=>{span.style.left=Math.random()*window.innerWidth+'px'; span.style.top=Math.random()*window.innerHeight+'px';},2000);});
+  userData.guards.forEach((g,i)=>{
+    const span=document.createElement('span'); span.className='guard'; span.textContent='🛡️';
+    guardDiv.appendChild(span);
+    span.style.left=Math.random()*window.innerWidth+'px';
+    span.style.top=Math.random()*window.innerHeight+'px';
+    setInterval(()=>{span.style.left=Math.random()*window.innerWidth+'px'; span.style.top=Math.random()*window.innerHeight+'px';},2000);
+  });
+  guardCountEl.textContent = userData.guards.length;
 }
-renderGuards();
 
-// spawn hoți
-function spawnThief(){const thief=document.createElement('span'); thief.className='thief'; thief.textContent='H'; document.body.appendChild(thief); thief.style.left=Math.random()*(window.innerWidth-30)+'px'; thief.style.top=Math.random()*(window.innerHeight-30)+'px'; setTimeout(()=>{thief.remove();},5000);}
+// === HOȚI & PEȘTI ===
+const lake=document.getElementById('lake');
+function spawnFish(){const fish=document.createElement('span'); fish.className='fish'; fish.textContent='🐟'; lake.appendChild(fish); fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px'; setInterval(()=>{fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px';},1000);}
+setInterval(spawnFish,2000);
+function spawnThief(){const thief=document.createElement('span'); thief.className='thief'; thief.textContent='🦹'; document.body.appendChild(thief); thief.style.left=Math.random()*(window.innerWidth-30)+'px'; thief.style.top=Math.random()*(window.innerHeight-30)+'px'; setTimeout(()=>{thief.remove();},5000);}
 setInterval(spawnThief,8000);
 
-// butoane admin
-const dismissBtn=document.createElement('button'); dismissBtn.textContent='Concediază toți paznicii'; dismissBtn.style.background='#f44336'; dismissBtn.style.color='white'; dismissBtn.style.margin='5px'; dismissBtn.onclick=()=>{guards=[]; renderGuards();};
-const catchBtn=document.createElement('button'); catchBtn.textContent='Prinde hoții'; catchBtn.style.background='#4caf50'; catchBtn.style.color='white'; catchBtn.style.margin='5px'; catchBtn.onclick=()=>{document.querySelectorAll('.thief').forEach(t=>t.remove());};
-adminArea.appendChild(dismissBtn); adminArea.appendChild(c
+// === TRACTOARE & SEMANAT ===
+const harvester=document.createElement('div');harvester.className='harvester';document.body.appendChild(harvester);
+const
