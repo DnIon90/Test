@@ -1,273 +1,69 @@
-<!DOCTYPE html>
-<html lang="ro">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Ferma Avansată a lui Ion</title>
-<style>
-body{font-family:Arial,sans-serif;background:#d0f0c0;margin:0;padding:20px;position:relative;overflow-x:hidden;}
-h1,h2,h3{color:#2e7d32;margin:5px 0;}
-input,button,select{padding:6px;border-radius:5px;border:1px solid #ccc;font-size:14px;}
-button{background:#2e7d32;color:#fff;border:0;cursor:pointer;}
-button:hover{background:#1b5e20;}
-.muted{color:#666;font-size:13px;}
-#login-area,#farm-area,#admin-area,#shop-area,#leaderboard-area{margin-bottom:20px;}
-#plots{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0;position:relative;}
-.plot{width:60px;height:60px;background:#a0522d;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;position:relative;font-weight:bold;overflow:hidden;}
-.plot img{width:100%;height:100%;display:block;margin:auto;position:absolute;transition:all 1s;}
-.plot span{position:absolute;bottom:0;font-size:11px;color:#000;}
-.plot.planted{background:#fdd835;}
-.plot.ready{background:#4caf50;}
-table{width:100%;border-collapse:collapse;margin-top:10px;}
-table,th,td{border:1px solid #ccc;}
-th,td{padding:6px;text-align:center;}
-.admin-btn{background:#d32f2f;}
-.first-place{background:gold;}
-#animals-list img{width:40px;height:40px;margin:2px;position:absolute;transition:all 2s;}
-#guards{margin:10px 0;position:relative;}
-#guards img{width:40px;height:40px;margin-right:5px;position:absolute;transition:all 2s;}
-.thief{width:40px;height:40px;position:absolute;transition:all 1s;}
-.fish{width:30px;height:30px;position:absolute;transition:all 1s;}
-#lake{width:100%;height:100px;background:#4fc3f7;margin:10px 0;position:relative;}
-</style>
-</head>
-<body>
-<h1>🌾 Ferma Avansată a lui Ion</h1>
+// === Logo-uri pentru entități ===
+const animalLogos = {
+  'Vacă':'https://i.imgur.com/4L3QZlP.png',
+  'Găină':'https://i.imgur.com/Ms5aK8y.png'
+};
+const fishLogo = 'https://i.imgur.com/9T9Qm6Q.png';
+const thiefLogo = 'https://i.imgur.com/bZyUqWm.png';
+const guardLogo = 'https://i.imgur.com/5vw2B1K.png';
 
-<!-- LOGIN / REGISTER -->
-<div id="login-area">
-  <div id="not-logged">
-    <input id="login-username" placeholder="Username"><br><br>
-    <input id="login-password" placeholder="Parolă" type="password"><br><br>
-    <button id="login-btn">Loghează</button>
-    <button id="show-register-btn" style="background:#388e3c">Înregistrează</button>
-    <div id="register-area" style="display:none;margin-top:10px;">
-      <input id="reg-username" placeholder="Username"><br><br>
-      <input id="reg-password" placeholder="Parolă" type="password"><br><br>
-      <select id="reg-role"><option value="user">User</option><option value="admin">Admin</option></select><br><br>
-      <button id="register-btn">Creează cont</button>
-      <button id="cancel-register">Anulează</button>
-      <div id="reg-msg" class="muted"></div>
-    </div>
-  </div>
-  <div id="logged" style="display:none;">
-    <p class="muted">Logat ca <strong id="me-username"></strong> (<span id="me-role"></span>)</p>
-    <button id="logout-btn">Deconectează</button>
-  </div>
-</div>
-
-<!-- LEADERBOARD -->
-<div id="leaderboard-area" style="display:none;">
-  <h2>🏆 Leaderboard</h2>
-  <table id="leaderboard-table">
-    <thead>
-      <tr><th>Loc</th><th>Username</th><th>Monede</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
-
-<!-- FARM AREA -->
-<div id="farm-area" style="display:none;">
-  <h2>🪴 Parcela ta de pământ</h2>
-  <div id="guards"></div>
-  <button id="tractor-btn">🚜 Recoltează toate plantele gata</button>
-  <div class="muted" id="farm-level">Nivel fermă: 1</div>
-  <div id="plots"></div>
-  <div id="lake"></div>
-  <h3>Resurse colectate</h3>
-  <div>🌾 Grâu: <span id="grain-count">0</span></div>
-  <div>🥕 Legume: <span id="veg-count">0</span></div>
-  <div>🍎 Fructe: <span id="fruit-count">0</span></div>
-  <div>💰 Monede: <span id="coins-count">0</span></div>
-</div>
-
-<!-- SHOP / ANIMALS -->
-<div id="shop-area" style="display:none;">
-  <h2>🛒 Magazin</h2>
-  <button onclick="buyAnimal('Vacă',5)">Cumpără Vacă (5 monede)</button>
-  <button onclick="buyAnimal('Găină',3)">Cumpără Găină (3 monede)</button>
-</div>
-<div id="animals-list"></div>
-
-<!-- ADMIN / STATISTICI -->
-<div id="admin-area" style="display:none;">
-  <h2>🔧 Panou Administrator & Statistici</h2>
-  <table>
-    <thead>
-      <tr><th>Username</th><th>Rol</th><th>Grâu</th><th>Legume</th><th>Fructe</th><th>Monede</th><th>Fermă</th><th>Acțiuni</th></tr>
-    </thead>
-    <tbody id="admin-table"></tbody>
-  </table>
-</div>
-
-<script>
-// SHA256
-async function sha256Hex(str){const utf8=new TextEncoder().encode(str);const hash=await crypto.subtle.digest('SHA-256',utf8);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
-const STORAGE_USERS='farm_users_advanced';
-function loadUsers(){return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}');}
-function saveUsers(u){localStorage.setItem(STORAGE_USERS,JSON.stringify(u));}
-
-// Elemente DOM
-const loginUsername=document.getElementById('login-username');
-const loginPassword=document.getElementById('login-password');
-const loginBtn=document.getElementById('login-btn');
-const showRegBtn=document.getElementById('show-register-btn');
-const registerArea=document.getElementById('register-area');
-const regUsername=document.getElementById('reg-username');
-const regPassword=document.getElementById('reg-password');
-const regRole=document.getElementById('reg-role');
-const registerBtn=document.getElementById('register-btn');
-const cancelRegister=document.getElementById('cancel-register');
-const regMsg=document.getElementById('reg-msg');
-const notLoggedDiv=document.getElementById('not-logged');
-const loggedDiv=document.getElementById('logged');
-const meUsernameEl=document.getElementById('me-username');
-const meRoleEl=document.getElementById('me-role');
-const logoutBtn=document.getElementById('logout-btn');
-const farmArea=document.getElementById('farm-area');
-const shopArea=document.getElementById('shop-area');
-const adminArea=document.getElementById('admin-area');
-const plotsDiv=document.getElementById('plots');
-const grainCount=document.getElementById('grain-count');
-const vegCount=document.getElementById('veg-count');
-const fruitCount=document.getElementById('fruit-count');
-const coinsCount=document.getElementById('coins-count');
-const adminTable=document.getElementById('admin-table');
-const leaderboardTable=document.querySelector('#leaderboard-table tbody');
-const animalsListDiv=document.getElementById('animals-list');
-const tractorBtn=document.getElementById('tractor-btn');
-const guardsDiv=document.getElementById('guards');
-const lakeDiv=document.getElementById('lake');
-
-let currentUser=null;
-let currentRole=null;
-let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],farmLevel:1,animals:[]};
-const plantTimes={'Grâu':10,'Legume':15,'Fructe':20};
-const plantImgs={'Grâu':'https://i.imgur.com/7bM9a5K.png','Legume':'https://i.imgur.com/Hu2z0kX.png','Fructe':'https://i.imgur.com/59lX4cP.png'};
-const animalImgs={'Vacă':'https://i.imgur.com/4L3QZlP.png','Găină':'https://i.imgur.com/Ms5aK8y.png'};
-const fishLogo='https://i.imgur.com/yourFishLogo.png';
-const thiefLogo='https://i.imgur.com/yourThiefLogo.png';
-const guardLogo='https://i.imgur.com/5X3PnDz.png';
-
-// --- LOGIN / REGISTER ---
-showRegBtn.addEventListener('click',()=>{registerArea.style.display='block';});
-cancelRegister.addEventListener('click',()=>{registerArea.style.display='none'; regMsg.textContent='';});
-registerBtn.addEventListener('click', async () => {
-  const u = regUsername.value.trim(); const p = regPassword.value; const role = regRole.value;
-  if(!u || !p){regMsg.textContent='Completează toate câmpurile!'; return;}
-  const users = loadUsers();
-  if(users[u]){regMsg.textContent='Username deja folosit!'; return;}
-  const hash = await sha256Hex(p);
-  const plots = Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
-  users[u] = {passHash:hash,role:role,grain:0,veg:0,fruit:0,coins:0,farmLevel:1,plots:plots,animals:[]};
-  saveUsers(users); regMsg.textContent='Cont creat! Poți să te loghezi.'; regUsername.value=''; regPassword.value=''; registerArea.style.display='none';
-});
-
-loginBtn.addEventListener('click', async () => {
-  const u = loginUsername.value.trim(); const p = loginPassword.value;
-  if(!u || !p){alert('Completează username și parolă!'); return;}
-  const users = loadUsers();
-  if(!users[u]){alert('Utilizator inexistent!'); return;}
-  const hash = await sha256Hex(p);
-  if(hash !== users[u].passHash){alert('Parolă greșită!'); return;}
-  currentUser = u; currentRole = users[u].role; userData = JSON.parse(JSON.stringify(users[u]));
-  localStorage.setItem('currentUser', currentUser); onLogin(); loginUsername.value=''; loginPassword.value='';
-});
-
-logoutBtn.addEventListener('click',()=>{
-  currentUser=null; currentRole=null; localStorage.removeItem('currentUser');
-  notLoggedDiv.style.display='block'; loggedDiv.style.display='none'; farmArea.style.display='none'; shopArea.style.display='none'; adminArea.style.display='none';
-  leaderboardTable.innerHTML='';
-});
-
-window.onload = () => {
-  const savedUser = localStorage.getItem('currentUser'); const users = loadUsers();
-  if(savedUser && users[savedUser]){currentUser = savedUser; currentRole = users[savedUser].role; userData = JSON.parse(JSON.stringify(users[savedUser])); onLogin();}
-}
-
-// --- FERMA ---
-function onLogin(){
-  notLoggedDiv.style.display='none'; loggedDiv.style.display='block'; farmArea.style.display='block'; shopArea.style.display='block';
-  meUsernameEl.textContent=currentUser; meRoleEl.textContent=currentRole;
-  if(!userData.plots || userData.plots.length===0) userData.plots=Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
-  renderFarm(); updateResourceUI(); renderAnimals(); renderLeaderboard(); renderGuards(); spawnFish(); setInterval(updateLoop,1000);
-  if(currentRole==='admin'){adminArea.style.display='block'; renderAdminTable();}
-}
-
-function renderFarm(){
-  plotsDiv.innerHTML='';
-  userData.plots.forEach((p,i)=>{
-    const div=document.createElement('div'); div.className='plot'; div.dataset.index=i; div.innerHTML='';
-    if(p.type && !p.ready) div.classList.add('planted');
-    if(p.ready) div.classList.add('ready');
-    if(p.type){
-      const img=document.createElement('img'); img.src=plantImgs[p.type]; img.alt=p.type; div.appendChild(img);
-      if(!p.ready){ const span=document.createElement('span'); const elapsed=Math.floor((Date.now()-p.plantedAt)/1000); const total=plantTimes[p.type]; span.textContent=`${total-elapsed}s`; div.appendChild(span);}
-    } else { div.textContent='Pământ gol'; }
-    div.addEventListener('click',()=>{interactPlot(i);}); plotsDiv.appendChild(div);
-  });
-}
-
-function interactPlot(idx){
-  const plot=userData.plots[idx];
-  if(plot.ready){
-    if(plot.type==='Grâu') userData.grain+=1;
-    if(plot.type==='Legume') userData.veg+=1;
-    if(plot.type==='Fructe') userData.fruit+=1;
-    userData.coins+=1; plot.type=null; plot.plantedAt=null; plot.ready=false;
-    saveUserData(); renderFarm(); updateResourceUI(); renderLeaderboard();
-  } else if(!plot.type){
-    const choice=prompt('Ce vrei să plantezi? Grâu / Legume / Fructe','Grâu');
-    if(choice && plantTimes[choice]){plot.type=choice; plot.plantedAt=Date.now(); plot.ready=false; saveUserData(); renderFarm();}
-  }
-}
-
-function updatePlots(){userData.plots.forEach(p=>{if(p.type && !p.ready){if(Math.floor((Date.now()-p.plantedAt)/1000)>=plantTimes[p.type]){p.ready=true;}}});}
-
-tractorBtn.addEventListener('click',()=>{
-  userData.plots.forEach(p=>{if(p.ready){if(p.type==='Grâu') userData.grain+=1;if(p.type==='Legume') userData.veg+=1;if(p.type==='Fructe') userData.fruit+=1;userData.coins+=1;p.type=null;p.ready=false;p.plantedAt=null;}});
-  saveUserData(); renderFarm(); updateResourceUI(); renderLeaderboard();
-});
-
-// --- ANIMAȚII ---
-function buyAnimal(name,cost){if(userData.coins>=cost){userData.coins-=cost; userData.animals.push(name); saveUserData(); updateResourceUI(); renderAnimals(); renderLeaderboard();} else alert('Nu ai suficiente monede!');}
-
+// === Animale (logo-uri) ===
 function renderAnimals(){
   animalsListDiv.innerHTML='';
   userData.animals.forEach(a=>{
-    const img=document.createElement('img'); img.src=animalImgs[a]; img.alt=a; img.title=a; img.className='animal';
+    const img=document.createElement('img');
+    img.src=animalLogos[a] || '';
+    img.className='animal';
     animalsListDiv.appendChild(img);
-    const x=Math.random()*(plotsDiv.offsetWidth-40); const y=Math.random()*(plotsDiv.offsetHeight-40);
-    img.style.left=x+'px'; img.style.top=y+'px'; img.style.position='absolute';
-    setInterval(()=>{const nx=Math.random()*(plotsDiv.offsetWidth-40); const ny=Math.random()*(plotsDiv.offsetHeight-40); img.style.left=nx+'px'; img.style.top=ny+'px';},3000);
+    const x=Math.random()*plotsDiv.offsetWidth;
+    const y=Math.random()*plotsDiv.offsetHeight;
+    img.style.left=x+'px';
+    img.style.top=y+'px';
+    setInterval(()=>{
+      img.style.left=Math.random()*plotsDiv.offsetWidth+'px';
+      img.style.top=Math.random()*plotsDiv.offsetHeight+'px';
+    },2000);
   });
 }
 
-function renderGuards(){
-  guardsDiv.innerHTML='';
-  for(let i=0;i<2;i++){
-    const img=document.createElement('img'); img.src=guardLogo; img.alt='Paznic'; img.title='Paznic '+(i+1);
-    img.style.left=(i*50)+'px'; img.style.top='0px'; img.style.position='absolute'; guardsDiv.appendChild(img);
-    setInterval(()=>{const nx=Math.random()*100; const ny=Math.random()*50; img.style.left=nx+'px'; img.style.top=ny+'px';},2000);
-  }
-}
-
+// === Pești (logo) ===
 function spawnFish(){
-  for(let i=0;i<5;i++){
-    const fish=document.createElement('img'); fish.src=fishLogo; fish.className='fish';
-    fish.style.left=Math.random()*(lakeDiv.offsetWidth-30)+'px'; fish.style.top=Math.random()*(lakeDiv.offsetHeight-30)+'px'; lakeDiv.appendChild(fish);
-    setInterval(()=>{fish.style.left=Math.random()*(lakeDiv.offsetWidth-30)+'px'; fish.style.top=Math.random()*(lakeDiv.offsetHeight-30)+'px';},1000);
-  }
+  const fish=document.createElement('img');
+  fish.src=fishLogo;
+  fish.className='fish';
+  lake.appendChild(fish);
+  fish.style.left=Math.random()*lake.offsetWidth+'px';
+  fish.style.top=Math.random()*lake.offsetHeight+'px';
+  setInterval(()=>{
+    fish.style.left=Math.random()*lake.offsetWidth+'px';
+    fish.style.top=Math.random()*lake.offsetHeight+'px';
+  },1000);
 }
 
+// === Hoți (logo) ===
 function spawnThief(){
-  const thief=document.createElement('img'); thief.src=thiefLogo; thief.alt='Hoț'; thief.title='Hoț'; thief.className='thief';
-  thief.style.left=Math.random()*(window.innerWidth-40)+'px'; thief.style.top=Math.random()*(window.innerHeight-40)+'px'; document.body.appendChild(thief);
-  setInterval(()=>{thief.style.left=Math.random()*(window.innerWidth-40)+'px'; thief.style.top=Math.random()*(window.innerHeight-40)+'px';},1000);
+  const thief=document.createElement('img');
+  thief.src=thiefLogo;
+  thief.className='thief';
+  document.body.appendChild(thief);
+  thief.style.left=Math.random()*(window.innerWidth-20)+'px';
+  thief.style.top=Math.random()*(window.innerHeight-20)+'px';
   setTimeout(()=>{thief.remove();},5000);
 }
 
-// --- ADMIN / LEADERBOARD ---
-function updateResourceUI(){grainCount.textContent=userData.grain; vegCount.textContent=userData.veg; fruitCount.textContent=userData.fruit; coinsCount.textContent=userData.coins;}
-function saveUserData(){const users=loadUsers(); if(!currentUser) return; users[currentUser]=JSON.parse(JSON.stringify(userData)); saveUsers(users
+// === Paznici (logo-uri statice) ===
+function renderGuards(){
+  let guardDiv = document.getElementById('guards');
+  if(!guardDiv){
+    guardDiv=document.createElement('div');
+    guardDiv.id='guards';
+    document.body.appendChild(guardDiv);
+  }
+  guardDiv.innerHTML='';
+  for(let i=0;i<2;i++){
+    const img=document.createElement('img');
+    img.src=guardLogo;
+    img.className='guard';
+    guardDiv.appendChild(img);
+  }
+}
