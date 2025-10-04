@@ -229,24 +229,114 @@ function buyAnimal(name,cost){if(userData.coins>=cost){userData.coins-=cost; use
 function renderAnimals(){animalsListDiv.innerHTML=''; userData.animals.forEach(a=>{const span=document.createElement('span'); span.className='animal'; if(a==='Vacă') span.textContent='🐄'; if(a==='Găină') span.textContent='🐔'; if(a==='Câine') span.textContent='🐕'; if(a==='Pisică') span.textContent='🐈'; animalsListDiv.appendChild(span); span.style.left=Math.random()*plotsDiv.offsetWidth+'px'; span.style.top=Math.random()*plotsDiv.offsetHeight+'px'; setInterval(()=>{span.style.left=Math.random()*plotsDiv.offsetWidth+'px'; span.style.top=Math.random()*plotsDiv.offsetHeight+'px';},2000);});}
 function updateResourceUI(){grainCount.textContent=userData.grain; vegCount.textContent=userData.veg; fruitCount.textContent=userData.fruit; coinsCount.textContent=userData.coins;}
 function saveUserData(){const users=loadUsers(); if(!currentUser) return; users[currentUser]=JSON.parse(JSON.stringify(userData)); saveUsers(users);}
-function renderAdminTable(){}
+function //=== Animatii Hoți, Tractoare, Paznici (fără pești) ===
 
-//=== Animatii Hoți, Tractoare, Pesti, Paznici ===
-const lake=document.getElementById('lake');
-function spawnFish(){const fish=document.createElement('span'); fish.className='fish'; fish.textContent='🐟'; lake.appendChild(fish); fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px'; setInterval(()=>{fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px';},1000);}
-setInterval(spawnFish,2000);
-function spawnThief(){const thief=document.createElement('span'); thief.className='thief'; thief.textContent='🦹'; document.body.appendChild(thief); thief.style.left=Math.random()*(window.innerWidth-30)+'px'; thief.style.top=Math.random()*(window.innerHeight-30)+'px'; setTimeout(()=>{thief.remove();},5000);}
+function spawnThief(){
+  const thief=document.createElement('span');
+  thief.className='thief';
+  thief.textContent='🦹';
+  document.body.appendChild(thief);
+  thief.style.left=Math.random()*(window.innerWidth-30)+'px';
+  thief.style.top=Math.random()*(window.innerHeight-30)+'px';
+  setTimeout(()=>{thief.remove();},5000);
+}
 setInterval(spawnThief,8000);
-function renderGuards(){let guardDiv=document.getElementById('guards'); if(!guardDiv){guardDiv=document.createElement('div'); guardDiv.id='guards'; document.body.appendChild(guardDiv);} guardDiv.innerHTML=''; for(let i=0;i<2;i++){const g=document.createElement('span'); g.className='guard'; g.textContent='🛡️'; guardDiv.appendChild(g); g.style.left=Math.random()*window.innerWidth+'px'; g.style.top=Math.random()*window.innerHeight+'px'; setInterval(()=>{g.style.left=Math.random()*window.innerWidth+'px'; g.style.top=Math.random()*window.innerHeight+'px';},2000);}}
+
+function renderGuards(){
+  let guardDiv=document.getElementById('guards');
+  if(!guardDiv){
+    guardDiv=document.createElement('div');
+    guardDiv.id='guards';
+    document.body.appendChild(guardDiv);
+  }
+  guardDiv.innerHTML='';
+  for(let i=0;i<2;i++){
+    const g=document.createElement('span');
+    g.className='guard';
+    g.textContent='🛡️';
+    guardDiv.appendChild(g);
+    g.style.left=Math.random()*window.innerWidth+'px';
+    g.style.top=Math.random()*window.innerHeight+'px';
+    setInterval(()=>{
+      g.style.left=Math.random()*window.innerWidth+'px';
+      g.style.top=Math.random()*window.innerHeight+'px';
+    },2000);
+  }
+}
 renderGuards();
 
 const harvester=document.createElement('div');harvester.className='harvester';document.body.appendChild(harvester);
 const seeder=document.createElement('div');seeder.className='seeder';document.body.appendChild(seeder);
-function moveHarvester(){const plots=document.querySelectorAll('.plot.ready');if(plots.length===0) return; const target=plots[Math.floor(Math.random()*plots.length)]; const rect=target.getBoundingClientRect(); harvester.style.left=rect.left+'px'; harvester.style.top=rect.top+'px'; setTimeout(()=>{target.classList.remove('ready','planted'); target.querySelector('.crop').style.transform='scale(0)';},500);}
-function moveSeeder(){const plots=document.querySelectorAll('.plot:not(.planted)');if(plots.length===0) return; const target=plots[Math.floor(Math.random()*plots.length)]; const rect=target.getBoundingClientRect(); seeder.style.left=rect.left+'px'; seeder.style.top=rect.top+'px'; setTimeout(()=>{target.classList.add('planted');},500);}
-setInterval(moveHarvester,3000); setInterval(moveSeeder,5000);
 
-function updateLoop(){updatePlots(); renderFarm();}
-</script>
-</body>
-</html>
+function moveHarvester(){
+  const plots=document.querySelectorAll('.plot.ready');
+  if(plots.length===0) return;
+  const target=plots[Math.floor(Math.random()*plots.length)];
+  const idx=Array.from(plotsDiv.children).indexOf(target);
+  const rect=target.getBoundingClientRect();
+  harvester.style.left=rect.left+'px';
+  harvester.style.top=rect.top+'px';
+  setTimeout(()=>{
+    const plotData=userData.plots[idx];
+    if(plotData && plotData.ready){
+      if(plotData.type==='Grâu') userData.grain+=1;
+      if(plotData.type==='Legume') userData.veg+=1;
+      if(plotData.type==='Fructe') userData.fruit+=1;
+      userData.coins+=1;
+      plotData.type=null; plotData.ready=false; plotData.plantedAt=null;
+      saveUserData(); updateResourceUI(); renderFarm();
+    }
+  },500);
+}
+
+function moveSeeder(){
+  const plots=document.querySelectorAll('.plot:not(.planted)');
+  if(plots.length===0) return;
+  const target=plots[Math.floor(Math.random()*plots.length)];
+  const idx=Array.from(plotsDiv.children).indexOf(target);
+  const rect=target.getBoundingClientRect();
+  seeder.style.left=rect.left+'px';
+  seeder.style.top=rect.top+'px';
+  setTimeout(()=>{
+    const plotData=userData.plots[idx];
+    if(plotData && !plotData.type){
+      const choices=['Grâu','Legume','Fructe'];
+      const choice=choices[Math.floor(Math.random()*choices.length)];
+      plotData.type=choice;
+      plotData.plantedAt=Date.now();
+      plotData.ready=false;
+      saveUserData();
+      renderFarm();
+    }
+  },500);
+}
+
+setInterval(moveHarvester,3000);
+setInterval(moveSeeder,5000);
+
+//=== Animatia animalelor cu interval global ===
+function animateAnimals(){
+  const animals=document.querySelectorAll('.animal');
+  animals.forEach(a=>{
+    a.style.left=Math.random()*plotsDiv.offsetWidth+'px';
+    a.style.top=Math.random()*plotsDiv.offsetHeight+'px';
+  });
+}
+setInterval(animateAnimals,2000);
+
+function renderAnimals(){
+  animalsListDiv.innerHTML='';
+  userData.animals.forEach(a=>{
+    const span=document.createElement('span'); 
+    span.className='animal';
+    if(a==='Vacă') span.textContent='🐄';
+    if(a==='Găină') span.textContent='🐔';
+    if(a==='Câine') span.textContent='🐕';
+    if(a==='Pisică') span.textContent='🐈';
+    animalsListDiv.appendChild(span);
+    // poziționare inițială
+    span.style.left=Math.random()*plotsDiv.offsetWidth+'px';
+    span.style.top=Math.random()*plotsDiv.offsetHeight+'px';
+  });
+}
+
