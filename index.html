@@ -101,15 +101,11 @@ th,td{padding:6px;text-align:center;}
 </div>
 
 <script>
-/* ===== SHA-256 ===== */
 async function sha256Hex(str){const utf8=new TextEncoder().encode(str);const hash=await crypto.subtle.digest('SHA-256',utf8);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
-
-/* ===== LocalStorage ===== */
 const STORAGE_USERS='farm_users_advanced';
 function loadUsers(){return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}');}
 function saveUsers(u){localStorage.setItem(STORAGE_USERS,JSON.stringify(u));}
 
-/* ===== UI Elements ===== */
 const loginUsername=document.getElementById('login-username');
 const loginPassword=document.getElementById('login-password');
 const loginBtn=document.getElementById('login-btn');
@@ -139,7 +135,6 @@ const leaderboardTable=document.querySelector('#leaderboard-table tbody');
 const animalsListDiv=document.getElementById('animals-list');
 const tractorBtn=document.getElementById('tractor-btn');
 
-/* ===== Game Data ===== */
 let currentUser=null;
 let currentRole=null;
 let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],farmLevel:1,animals:[]};
@@ -147,38 +142,52 @@ const plantTimes={'Grâu':10,'Legume':15,'Fructe':20};
 const plantImgs={'Grâu':'https://i.imgur.com/7bM9a5K.png','Legume':'https://i.imgur.com/Hu2z0kX.png','Fructe':'https://i.imgur.com/59lX4cP.png'};
 const animalImgs={'Vacă':'https://i.imgur.com/4L3QZlP.png','Găină':'https://i.imgur.com/Ms5aK8y.png'};
 
-/* ===== Register / Login ===== */
 showRegBtn.addEventListener('click',()=>{registerArea.style.display='block';});
 cancelRegister.addEventListener('click',()=>{registerArea.style.display='none'; regMsg.textContent='';});
-registerBtn.addEventListener('click', async ()=>{
-  const u=regUsername.value.trim(),p=regPassword.value,role=regRole.value;
-  if(!u||!p){regMsg.textContent='Completează toate câmpurile'; return;}
-  const users=loadUsers();
-  if(users[u]){regMsg.textContent='Username deja folosit'; return;}
-  const plots=Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
-  const hash=await sha256Hex(p);
-  users[u]={passHash:hash,role:role,grain:0,veg:0,fruit:0,coins:0,plots:plots,farmLevel:1,animals:[]};
-  saveUsers(users); regMsg.textContent='Cont creat! Poți să te loghezi.';
+registerBtn.addEventListener('click', async () => {
+  const u = regUsername.value.trim();
+  const p = regPassword.value;
+  const role = regRole.value;
+  if(!u || !p){regMsg.textContent='Completează toate câmpurile!'; return;}
+  const users = loadUsers();
+  if(users[u]){regMsg.textContent='Username deja folosit!'; return;}
+  const hash = await sha256Hex(p);
+  const plots = Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
+  users[u] = {passHash:hash,role:role,grain:0,veg:0,fruit:0,coins:0,farmLevel:1,plots:plots,animals:[]};
+  saveUsers(users);
+  regMsg.textContent='Cont creat! Poți să te loghezi.';
   regUsername.value=''; regPassword.value=''; registerArea.style.display='none';
 });
-loginBtn.addEventListener('click', async ()=>{
-  const u=loginUsername.value.trim(),p=loginPassword.value;
-  if(!u||!p){alert('Completează username și parolă'); return;}
-  const users=loadUsers();
-  if(!users[u]){alert('Utilizator inexistent'); return;}
-  const hash=await sha256Hex(p);
-  if(hash!==users[u].passHash){alert('Parolă greșită'); return;}
-  currentUser=u; currentRole=users[u].role; userData=JSON.parse(JSON.stringify(users[u]));
-  localStorage.setItem('currentUser',currentUser); onLogin();
+
+loginBtn.addEventListener('click', async () => {
+  const u = loginUsername.value.trim();
+  const p = loginPassword.value;
+  if(!u || !p){alert('Completează username și parolă!'); return;}
+  const users = loadUsers();
+  if(!users[u]){alert('Utilizator inexistent!'); return;}
+  const hash = await sha256Hex(p);
+  if(hash !== users[u].passHash){alert('Parolă greșită!'); return;}
+  currentUser = u; currentRole = users[u].role; userData = JSON.parse(JSON.stringify(users[u]));
+  localStorage.setItem('currentUser', currentUser);
+  onLogin();
   loginUsername.value=''; loginPassword.value='';
 });
+
 logoutBtn.addEventListener('click',()=>{
   currentUser=null; currentRole=null; localStorage.removeItem('currentUser');
   notLoggedDiv.style.display='block'; loggedDiv.style.display='none'; farmArea.style.display='none'; shopArea.style.display='none'; adminArea.style.display='none';
   leaderboardTable.innerHTML='';
 });
 
-/* ===== On Login ===== */
+window.onload = () => {
+  const savedUser = localStorage.getItem('currentUser');
+  const users = loadUsers();
+  if(savedUser && users[savedUser]){
+    currentUser = savedUser; currentRole = users[savedUser].role; userData = JSON.parse(JSON.stringify(users[savedUser]));
+    onLogin();
+  }
+}
+
 function onLogin(){
   notLoggedDiv.style.display='none'; loggedDiv.style.display='block'; farmArea.style.display='block'; shopArea.style.display='block';
   meUsernameEl.textContent=currentUser; meRoleEl.textContent=currentRole;
@@ -188,19 +197,10 @@ function onLogin(){
   setInterval(updateLoop,1000);
 }
 
-/* ===== Auto-login ===== */
-window.onload=()=>{
-  const savedUser=localStorage.getItem('currentUser');
-  const users=loadUsers();
-  if(savedUser && users[savedUser]){currentUser=savedUser; currentRole=users[savedUser].role; userData=JSON.parse(JSON.stringify(users[savedUser])); onLogin();}
-}
-
-/* ===== FARM ===== */
 function renderFarm(){
   plotsDiv.innerHTML='';
   userData.plots.forEach((p,i)=>{
-    const div=document.createElement('div'); div.className='plot'; div.dataset.index=i;
-    div.innerHTML=''; // clear
+    const div=document.createElement('div'); div.className='plot'; div.dataset.index=i; div.innerHTML='';
     if(p.type && !p.ready) div.classList.add('planted');
     if(p.ready) div.classList.add('ready');
     if(p.type){
@@ -236,7 +236,6 @@ function interactPlot(idx){
 
 function updatePlots(){userData.plots.forEach(p=>{if(p.type && !p.ready){if(Math.floor((Date.now()-p.plantedAt)/1000)>=plantTimes[p.type]){p.ready=true;}}});}
 
-/* ===== TRACTOR ===== */
 tractorBtn.addEventListener('click',()=>{
   userData.plots.forEach(p=>{
     if(p.ready){
@@ -249,16 +248,39 @@ tractorBtn.addEventListener('click',()=>{
   }); saveUserData(); renderFarm(); updateResourceUI(); renderLeaderboard();
 });
 
-/* ===== SHOP / ANIMALS ===== */
 function buyAnimal(name,cost){if(userData.coins>=cost){userData.coins-=cost; userData.animals.push(name); saveUserData(); updateResourceUI(); renderAnimals(); renderLeaderboard();} else alert('Nu ai suficiente monede!');}
-function renderAnimals(){animalsListDiv.innerHTML=''; userData.animals.forEach(a=>{const img=document.createElement('img'); img.src=animalImgs[a]; img.alt=a; img.title=a; img.style.display='inline-block'; animalsListDiv.appendChild(img);});}
+function renderAnimals(){animalsListDiv.innerHTML=''; userData.animals.forEach(a=>{const img=document.createElement('img'); img.src=animalImgs[a]; img.alt=a; img.title=a; animalsListDiv.appendChild(img);});}
 
-/* ===== THIEVES ===== */
-function thiefEvent(){const totalCoins=userData.coins;if(totalCoins>0 && Math.random()<0.1){const stolen=Math.floor(totalCoins*0.3);userData.coins-=stolen;alert(`Hoții au furat ${stolen} monede!`);saveUserData(); updateResourceUI(); renderLeaderboard();}}
-setInterval(thiefEvent,60000);
+function updateResourceUI(){grainCount.textContent=userData.grain; vegCount.textContent=userData.veg; fruitCount.textContent=userData.fruit; coinsCount.textContent=userData.coins;}
+function saveUserData(){const users=loadUsers(); if(!currentUser) return; users[currentUser]=JSON.parse(JSON.stringify(userData)); saveUsers(users);}
 
-/* ===== LEADERBOARD ===== */
-function renderLeaderboard(){const users=loadUsers(); const arr=Object.keys(users).map(u=>({username:u,coins:users[u].coins||0})); arr.sort((a,b)=>b.coins-a.coins); leaderboardTable.innerHTML=''; arr.forEach((u,i)=>{const tr=document.createElement('tr'); if(i===0) tr.classList.add('first-place'); tr.innerHTML=`<td>${i+1}</td><td>${u.username}</td><td>${u.coins}</td>`; leaderboardTable.appendChild(tr);});}
+function renderLeaderboard(){
+  const users=loadUsers();
+  const arr=Object.keys(users).map(u=>({username:u,coins:users[u].coins||0}));
+  arr.sort((a,b)=>b.coins-a.coins);
+  leaderboardTable.innerHTML='';
+  arr.forEach((u,i)=>{
+    const tr=document.createElement('tr');
+    if(i===0) tr.classList.add('first-place');
+    tr.innerHTML=`<td>${i+1}</td><td>${u.username}</td><td>${u.coins}</td>`;
+    leaderboardTable.appendChild(tr);
+  });
+}
 
-/* ===== ADMIN ===== */
-function renderAdminTable(){adminTable.innerHTML=''; const users=
+function renderAdminTable(){
+  adminTable.innerHTML=''; const users=loadUsers();
+  Object.keys(users).forEach(u=>{
+    const us=users[u];
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${u}</td><td>${us.role}</td><td>${us.grain}</td><td>${us.veg}</td><td>${us.fruit}</td><td>${us.coins}</td><td>${us.farmLevel}</td>
+    <td>${u!==currentUser?`<button class="admin-btn" onclick="deleteUser('${u}')">Șterge</button>`:''}</td>`;
+    adminTable.appendChild(tr);
+  });
+}
+
+window.deleteUser=function(u){if(!confirm('Ștergi utilizatorul '+u+'?')) return; const users=loadUsers(); delete users[u]; saveUsers(users); renderAdminTable();}
+
+function updateLoop(){updatePlots(); renderFarm();}
+</script>
+</body>
+</html>
