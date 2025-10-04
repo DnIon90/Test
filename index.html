@@ -82,7 +82,28 @@ th,td{padding:6px;text-align:center;}
 <!-- ADMIN -->
 <div id="admin-area" style="display:none;">
   <h2>🔧 Panou Administrator & Statistici</h2>
-  <table>
+  <table>function renderAdminTable(){
+  const users = loadUsers();
+  adminTable.innerHTML = '';
+  Object.keys(users).forEach(u => {
+    const user = users[u];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${u}</td><td>${user.role}</td>
+                    <td>${user.grain}</td><td>${user.veg}</td>
+                    <td>${user.fruit}</td><td>${user.coins}</td>
+                    <td>${user.farmLevel}</td>
+                    <td>${user.role!=='admin'?`<button onclick="deleteUser('${u}')">Șterge</button>`:''}</td>`;
+    adminTable.appendChild(tr);
+  });
+}
+function deleteUser(u){
+  if(confirm(`Ștergi utilizatorul ${u}?`)){
+    const users = loadUsers();
+    delete users[u];
+    saveUsers(users);
+    renderAdminTable();
+  }
+}
     <thead>
       <tr><th>Username</th><th>Rol</th><th>Grâu</th><th>Legume</th><th>Fructe</th><th>Monede</th><th>Fermă</th><th>Acțiuni</th></tr>
     </thead>
