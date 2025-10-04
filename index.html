@@ -101,7 +101,7 @@ async function sha256Hex(str){
 }
 
 /* ===== LocalStorage ===== */
-const STORAGE_USERS='farm_users_adv_v2';
+const STORAGE_USERS='farm_users_adv_v3';
 function loadUsers(){return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}');}
 function saveUsers(u){localStorage.setItem(STORAGE_USERS,JSON.stringify(u));}
 
@@ -170,11 +170,17 @@ loginBtn.addEventListener('click',async()=>{
   currentUser=u;
   currentRole=users[u].role;
   userData=JSON.parse(JSON.stringify(users[u]));
+  localStorage.setItem('currentUser',currentUser); // păstrează login
   onLogin();
   loginUsername.value=''; loginPassword.value='';
 });
 
-logoutBtn.addEventListener('click',()=>{currentUser=null; currentRole=null; onLogout();});
+logoutBtn.addEventListener('click',()=>{
+  currentUser=null;
+  currentRole=null;
+  localStorage.removeItem('currentUser');
+  onLogout();
+});
 
 /* ===== Login / Logout UI ===== */
 function onLogin(){
@@ -185,6 +191,9 @@ function onLogin(){
   leaderboardArea.style.display='block';
   meUsernameEl.textContent=currentUser;
   meRoleEl.textContent=currentRole;
+  if(!userData.plots || userData.plots.length===0){
+    userData.plots = Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
+  }
   renderFarm();
   updateResourceUI();
   renderAnimals();
@@ -287,80 +296,4 @@ upgradeBtnEl.addEventListener('click',()=>{
     userData.coins-=cost;
     userData.farmLevel+=1;
     saveUserData(); updateResourceUI(); renderFarm();
-  } else alert('Nu ai suficiente monede');
-});
-
-/* ===== ANIMALS / SHOP ===== */
-function buyAnimal(type,cost){
-  if(userData.coins>=cost){
-    userData.coins-=cost;
-    userData.animals.push({type:type,produced:0,lastTime:Date.now()});
-    saveUserData(); renderAnimals(); updateResourceUI();
-  } else alert('Nu ai suficiente monede');
-}
-
-function renderAnimals(){
-  animalsListDiv.innerHTML='Animale: ';
-  userData.animals.forEach(a=>{
-    animalsListDiv.innerHTML+=`${a.type} `;
-  });
-}
-
-/* ===== ADMIN ===== */
-function renderAdminTable(){
-  adminTable.innerHTML='';
-  const users=loadUsers();
-  Object.keys(users).forEach(u=>{
-    const us=users[u];
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td>${u}</td><td>${us.role}</td><td>${us.grain}</td><td>${us.veg}</td><td>${us.fruit}</td><td>${us.farmLevel}</td><td>${us.coins}</td>
-    <td>${u!==currentUser?`<button class="admin-btn" onclick="deleteUser('${u}')">Șterge</button>`:''}</td>`;
-    adminTable.appendChild(tr);
-  });
-}
-
-window.deleteUser=function(u){
-  if(!confirm('Ștergi utilizatorul '+u+'?')) return;
-  const users=loadUsers(); delete users[u]; saveUsers(users); renderAdminTable();
-}
-
-/* ===== LEADERBOARD ===== */
-function updateLeaderboard(){
-  const users=loadUsers();
-  const arr=Object.keys(users).map(u=>{
-    const us=users[u];
-    const coinsTotal=us.coins+us.grain+us.veg*2+us.fruit*3; // monede totale pentru ranking
-    return {username:u,coins:coinsTotal};
-  }).sort((a,b)=>b.coins-a.coins);
-  leaderboardTable.innerHTML='';
-  arr.forEach((u,i)=>{
-    const tr=document.createElement('tr');
-    tr.className=i===0?'first-place':'';
-    tr.innerHTML=`<td>${i+1}</td><td>${u.username}</td><td>${u.coins}</td>`;
-    leaderboardTable.appendChild(tr);
-  });
-}
-
-/* ===== MAIN LOOP ===== */
-function updateLoop(){
-  updatePlots();
-  updateAnimals();
-  updateResourceUI();
-  updateLeaderboard();
-  saveUserData();
-}
-
-/* Animals production */
-function updateAnimals(){
-  const now=Date.now();
-  userData.animals.forEach(a=>{
-    if(a.type==='Vacă' && now-a.lastTime>=5*1000){userData.coins+=2; a.lastTime=now;}
-    if(a.type==='Găină' && now-a.lastTime>=3*1000){userData.coins+=1; a.lastTime=now;}
-  });
-}
-
-/* ===== INIT ===== */
-if(currentUser && loadUsers()[currentUser]) onLogin();
-</script>
-</body>
-</html>
+  } else alert
