@@ -1,65 +1,172 @@
 <!DOCTYPE html>
 <html lang="ro">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Site pe GitHub Pages</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: linear-gradient(135deg, #0b74ea, #0366d6);
-      color: white;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    header {
-      padding: 20px;
-      background: rgba(0,0,0,0.2);
-    }
-    main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      padding: 20px;
-    }
-    footer {
-      padding: 15px;
-      background: rgba(0,0,0,0.2);
-    }
-    .box {
-      background: rgba(255,255,255,0.1);
-      padding: 20px;
-      border-radius: 10px;
-      max-width: 600px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Fermă Real-Time</title>
+<style>
+body{font-family:Arial,sans-serif;background:#d0f0c0;margin:0;padding:20px;}
+h1,h2{color:#2e7d32;margin:5px 0;}
+input,button,select{padding:6px;border-radius:5px;border:1px solid #ccc;font-size:14px;}
+button{background:#2e7d32;color:#fff;border:0;cursor:pointer;}
+button:hover{background:#1b5e20;}
+.muted{color:#666;font-size:13px;}
+#login-area,#farm-area,#admin-area{margin-bottom:20px;}
+#plots{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0;}
+.plot{width:100px;height:100px;background:#a0522d;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;position:relative;font-weight:bold;}
+.plot.ready{background:#4caf50;}
+.plot span{position:absolute;bottom:2px;font-size:12px;}
+table{width:100%;border-collapse:collapse;margin-top:10px;}
+table,th,td{border:1px solid #ccc;}
+th,td{padding:6px;text-align:center;}
+.admin-btn{background:#d32f2f;}
+</style>
 </head>
 <body>
-  <header>
-    <h1>🌐 Site-ul meu pe GitHub Pages</h1>
-  </header>
+<h1>🌾 Fermă Real-Time</h1>
 
-  <main>
-    <div class="box">
-      <p>Bun venit pe site-ul meu hostat gratuit cu GitHub Pages 🚀</p>
-      <p>Aici pot adăuga texte, imagini sau chiar un radio online.</p>
-
-      <!-- Player radio exemplu -->
-      <h3>🎵 Radio Test</h3>
-      <audio controls autoplay>
-        <source src="https://live.kissfm.ro/kissfm.aacp" type="audio/aac">
-        Browserul tău nu suportă redarea audio.
-      </audio>
+<div id="login-area">
+  <div id="not-logged">
+    <input id="login-username" placeholder="Username"><br><br>
+    <input id="login-password" placeholder="Parolă" type="password"><br><br>
+    <button id="login-btn">Loghează</button>
+    <button id="show-register-btn" style="background:#388e3c">Înregistrează</button>
+    <div id="register-area" style="display:none;margin-top:10px;">
+      <input id="reg-username" placeholder="Username"><br><br>
+      <input id="reg-password" placeholder="Parolă" type="password"><br><br>
+      <select id="reg-role"><option value="user">User</option><option value="admin">Admin</option></select><br><br>
+      <button id="register-btn">Creează cont</button>
+      <button id="cancel-register" style="background:#888">Anulează</button>
+      <div id="reg-msg" class="muted"></div>
     </div>
-  </main>
+  </div>
+  <div id="logged" style="display:none;">
+    <p class="muted">Logat ca <strong id="me-username"></strong> (<span id="me-role"></span>)</p>
+    <button id="logout-btn">Deconectează</button>
+  </div>
+</div>
 
-  <footer>
-    © 2025 • Creat de mine pe GitHub Pages
-  </footer>
-</body>
-</html>
+<div id="farm-area" style="display:none;">
+  <h2>🪴 Parcela ta de pământ</h2>
+  <button id="upgrade-btn">Upgrade fermă (10 resurse)</button>
+  <div class="muted" id="farm-level">Nivel fermă: 1</div>
+  <div id="plots"></div>
+  <h3>Resurse colectate</h3>
+  <div>🌾 Grâu: <span id="grain-count">0</span></div>
+  <div>🥕 Legume: <span id="veg-count">0</span></div>
+  <div>🍎 Fructe: <span id="fruit-count">0</span></div>
+</div>
+
+<div id="admin-area" style="display:none;">
+  <h2>🔧 Panou Administrator</h2>
+  <table>
+    <thead>
+      <tr><th>Username</th><th>Rol</th><th>Grâu</th><th>Legume</th><th>Fructe</th><th>Fermă</th><th>Acțiuni</th></tr>
+    </thead>
+    <tbody id="admin-table"></tbody>
+  </table>
+</div>
+
+<script>
+/* ===== SHA-256 ===== */
+async function sha256Hex(str){
+  const utf8=new TextEncoder().encode(str);
+  const hash=await crypto.subtle.digest('SHA-256',utf8);
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+/* ===== LocalStorage ===== */
+const STORAGE_USERS='farm_users_v1';
+function loadUsers(){return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}');}
+function saveUsers(u){localStorage.setItem(STORAGE_USERS,JSON.stringify(u));}
+
+/* ===== Elemente UI ===== */
+const loginUsername=document.getElementById('login-username');
+const loginPassword=document.getElementById('login-password');
+const loginBtn=document.getElementById('login-btn');
+const showRegBtn=document.getElementById('show-register-btn');
+const registerArea=document.getElementById('register-area');
+const regUsername=document.getElementById('reg-username');
+const regPassword=document.getElementById('reg-password');
+const regRole=document.getElementById('reg-role');
+const registerBtn=document.getElementById('register-btn');
+const cancelRegister=document.getElementById('cancel-register');
+const regMsg=document.getElementById('reg-msg');
+const notLoggedDiv=document.getElementById('not-logged');
+const loggedDiv=document.getElementById('logged');
+const meUsernameEl=document.getElementById('me-username');
+const meRoleEl=document.getElementById('me-role');
+const logoutBtn=document.getElementById('logout-btn');
+const farmArea=document.getElementById('farm-area');
+const adminArea=document.getElementById('admin-area');
+const plotsDiv=document.getElementById('plots');
+const grainCount=document.getElementById('grain-count');
+const vegCount=document.getElementById('veg-count');
+const fruitCount=document.getElementById('fruit-count');
+const upgradeBtnEl=document.getElementById('upgrade-btn');
+const farmLevelEl=document.getElementById('farm-level');
+const adminTable=document.getElementById('admin-table');
+
+let currentUser=null;
+let currentRole=null;
+let userData={grain:0,veg:0,fruit:0,plots:[],farmLevel:1};
+
+/* ===== Logare / Registrare ===== */
+showRegBtn.addEventListener('click',()=>{registerArea.style.display='block';});
+cancelRegister.addEventListener('click',()=>{registerArea.style.display='none';regMsg.textContent='';});
+
+registerBtn.addEventListener('click',async()=>{
+  const u=regUsername.value.trim(),p=regPassword.value,role=regRole.value;
+  if(!u||!p){regMsg.textContent='Completează toate câmpurile';return;}
+  const users=loadUsers();
+  if(users[u]){regMsg.textContent='Username deja folosit';return;}
+  const hash=await sha256Hex(p);
+  // fiecare jucător începe cu 3 parcele goale
+  const plots=[{type:null,plantedAt:null,ready:false},{type:null,plantedAt:null,ready:false},{type:null,plantedAt:null,ready:false}];
+  users[u]={passHash:hash,role:role,grain:0,veg:0,fruit:0,plots:plots,farmLevel:1};
+  saveUsers(users);
+  regMsg.textContent='Cont creat! Poți să te loghezi.';
+  regUsername.value=''; regPassword.value='';
+  registerArea.style.display='none';
+});
+
+loginBtn.addEventListener('click',async()=>{
+  const u=loginUsername.value.trim(),p=loginPassword.value;
+  if(!u||!p){alert('Completează username și parolă');return;}
+  const users=loadUsers();
+  if(!users[u]){alert('Utilizator inexistent');return;}
+  const hash=await sha256Hex(p);
+  if(hash!==users[u].passHash){alert('Parolă greșită');return;}
+  currentUser=u;
+  currentRole=users[u].role;
+  userData=JSON.parse(JSON.stringify(users[u]));
+  onLogin();
+  loginUsername.value=''; loginPassword.value='';
+});
+
+logoutBtn.addEventListener('click',()=>{currentUser=null; currentRole=null; onLogout();});
+
+/* ===== Login / Logout UI ===== */
+function onLogin(){
+  notLoggedDiv.style.display='none';
+  loggedDiv.style.display='block';
+  farmArea.style.display='block';
+  meUsernameEl.textContent=currentUser;
+  meRoleEl.textContent=currentRole;
+  renderFarm();
+  updateResourceUI();
+  if(currentRole==='admin'){adminArea.style.display='block'; renderAdminTable();}
+}
+
+function onLogout(){
+  notLoggedDiv.style.display='block';
+  loggedDiv.style.display='none';
+  farmArea.style.display='none';
+  adminArea.style.display='none';
+  meUsernameEl.textContent='';
+  meRoleEl.textContent='';
+}
+
+/* ===== Farm logic ===== */
+function renderFarm(){
+  plotsDiv.innerHTML='';
