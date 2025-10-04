@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Fermă Real-Time</title>
+<title>Fermă Real-Time Avansată</title>
 <style>
 body{font-family:Arial,sans-serif;background:#d0f0c0;margin:0;padding:20px;}
 h1,h2{color:#2e7d32;margin:5px 0;}
@@ -13,9 +13,10 @@ button:hover{background:#1b5e20;}
 .muted{color:#666;font-size:13px;}
 #login-area,#farm-area,#admin-area{margin-bottom:20px;}
 #plots{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0;}
-.plot{width:100px;height:100px;background:#a0522d;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;position:relative;font-weight:bold;}
+.plot{width:100px;height:100px;background:#a0522d;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;cursor:pointer;position:relative;font-weight:bold;transition:background 0.3s;}
+.plot.planted{background:#fdd835;}
 .plot.ready{background:#4caf50;}
-.plot span{position:absolute;bottom:2px;font-size:12px;}
+.plot span{position:absolute;bottom:2px;font-size:12px;color:#000;}
 table{width:100%;border-collapse:collapse;margin-top:10px;}
 table,th,td{border:1px solid #ccc;}
 th,td{padding:6px;text-align:center;}
@@ -23,7 +24,7 @@ th,td{padding:6px;text-align:center;}
 </style>
 </head>
 <body>
-<h1>🌾 Fermă Real-Time</h1>
+<h1>🌾 Fermă Real-Time Avansată</h1>
 
 <div id="login-area">
   <div id="not-logged">
@@ -76,7 +77,7 @@ async function sha256Hex(str){
 }
 
 /* ===== LocalStorage ===== */
-const STORAGE_USERS='farm_users_v1';
+const STORAGE_USERS='farm_users_adv_v1';
 function loadUsers(){return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}');}
 function saveUsers(u){localStorage.setItem(STORAGE_USERS,JSON.stringify(u));}
 
@@ -110,6 +111,7 @@ const adminTable=document.getElementById('admin-table');
 let currentUser=null;
 let currentRole=null;
 let userData={grain:0,veg:0,fruit:0,plots:[],farmLevel:1};
+const plantTimes={'Grâu':10,'Legume':15,'Fructe':20}; // secunde demo
 
 /* ===== Logare / Registrare ===== */
 showRegBtn.addEventListener('click',()=>{registerArea.style.display='block';});
@@ -121,8 +123,7 @@ registerBtn.addEventListener('click',async()=>{
   const users=loadUsers();
   if(users[u]){regMsg.textContent='Username deja folosit';return;}
   const hash=await sha256Hex(p);
-  // fiecare jucător începe cu 3 parcele goale
-  const plots=[{type:null,plantedAt:null,ready:false},{type:null,plantedAt:null,ready:false},{type:null,plantedAt:null,ready:false}];
+  const plots=Array(6).fill().map(()=>({type:null,plantedAt:null,ready:false}));
   users[u]={passHash:hash,role:role,grain:0,veg:0,fruit:0,plots:plots,farmLevel:1};
   saveUsers(users);
   regMsg.textContent='Cont creat! Poți să te loghezi.';
@@ -156,6 +157,8 @@ function onLogin(){
   renderFarm();
   updateResourceUI();
   if(currentRole==='admin'){adminArea.style.display='block'; renderAdminTable();}
+  // Start update loop
+  setInterval(updatePlots,1000);
 }
 
 function onLogout(){
@@ -170,3 +173,103 @@ function onLogout(){
 /* ===== Farm logic ===== */
 function renderFarm(){
   plotsDiv.innerHTML='';
+  userData.plots.forEach((p,i)=>{
+    const div=document.createElement('div');
+    div.className='plot';
+    if(p.type && !p.ready) div.classList.add('planted');
+    if(p.ready) div.classList.add('ready');
+    div.dataset.index=i;
+    div.textContent=p.type?p.type:'Pământ gol';
+    const span=document.createElement('span');
+    if(p.type && !p.ready){
+      const elapsed=Math.floor((Date.now()-p.plantedAt)/1000);
+      const total=plantTimes[p.type];
+      span.textContent=`${total-elapsed}s`;
+    }
+    div.appendChild(span);
+    div.addEventListener('click',()=>{interactPlot(i);});
+    plotsDiv.appendChild(div);
+  });
+}
+
+function interactPlot(idx){
+  const plot=userData.plots[idx];
+  if(plot.ready){
+    if(plot.type==='Grâu') userData.grain+=1;
+    if(plot.type==='Legume') userData.veg+=1;
+    if(plot.type==='Fructe') userData.fruit+=1;
+    plot.type=null; plot.plantedAt=null; plot.ready=false;
+    saveUserData(); renderFarm(); updateResourceUI();
+  } else if(!plot.type){
+    const choice=prompt('Ce vrei să plantezi? Grâu / Legume / Fructe','Grâu');
+    if(choice && plantTimes[choice]){
+      plot.type=choice;
+      plot.plantedAt=Date.now();
+      plot.ready=false;
+      saveUserData();
+      renderFarm();
+    }
+  }
+}
+
+function updatePlots(){
+  let changed=false;
+  userData.plots.forEach(p=>{
+    if(p.type && !p.ready){
+      const elapsed=Math.floor((Date.now()-p.plantedAt)/1000);
+      if(elapsed>=plantTimes[p.type]){p.ready=true; changed=true;}
+    }
+  });
+  if(changed){saveUserData(); renderFarm();}
+}
+
+function updateResourceUI(){
+  grainCount.textContent=userData.grain;
+  vegCount.textContent=userData.veg;
+  fruitCount.textContent=userData.fruit;
+  farmLevelEl.textContent='Nivel fermă: '+userData.farmLevel;
+}
+
+function saveUserData(){
+  const users=loadUsers();
+  if(!currentUser) return;
+  users[currentUser]=JSON.parse(JSON.stringify(userData));
+  saveUsers(users);
+}
+
+/* Upgrade fermă */
+upgradeBtnEl.addEventListener('click',()=>{
+  const cost=10;
+  const total=userData.grain+userData.veg+userData.fruit;
+  if(total>=cost){
+    let remaining=cost;
+    if(userData.grain>=remaining){userData.grain-=remaining; remaining=0;}
+    else{remaining-=userData.grain; userData.grain=0;}
+    if(remaining>0 && userData.veg>=remaining){userData.veg-=remaining; remaining=0;}
+    else if(remaining>0){remaining-=userData.veg; userData.veg=0;}
+    if(remaining>0 && userData.fruit>=remaining){userData.fruit-=remaining; remaining=0;}
+    userData.farmLevel+=1;
+    saveUserData(); updateResourceUI(); renderFarm();
+  } else alert('Nu ai suficiente resurse');
+});
+
+/* ===== Admin ===== */
+function renderAdminTable(){
+  adminTable.innerHTML='';
+  const users=loadUsers();
+  Object.keys(users).forEach(u=>{
+    const us=users[u];
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${u}</td><td>${us.role}</td><td>${us.grain}</td><td>${us.veg}</td><td>${us.fruit}</td><td>${us.farmLevel}</td>
+    <td>${u!==currentUser?`<button class="admin-btn" onclick="deleteUser('${u}')">Șterge</button>`:''}</td>`;
+    adminTable.appendChild(tr);
+  });
+}
+
+window.deleteUser=function(u){
+  if(!confirm('Ștergi utilizatorul '+u+'?')) return;
+  const users=loadUsers(); delete users[u]; saveUsers(users); renderAdminTable();
+}
+</script>
+</body>
+</html>
