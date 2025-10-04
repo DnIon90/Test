@@ -33,7 +33,7 @@ th,td{padding:6px;text-align:center;}
 <body>
 <h1>🌾 Ferma Animată a lui Ion</h1>
 
-<!-- LOGIN / REGISTER -->
+<!-- LOGIN / REGISTER (ramane neschimbat) -->
 <div id="login-area">
   <div id="not-logged">
     <input id="login-username" placeholder="Username"><br><br>
@@ -66,8 +66,13 @@ th,td{padding:6px;text-align:center;}
   <div>🥕 Legume: <span id="veg-count">0</span></div>
   <div>🍎 Fructe: <span id="fruit-count">0</span></div>
   <div>💰 Monede: <span id="coins-count">0</span></div>
+  <h3>Animale</h3>
   <div id="animals-list"></div>
+  <h3>Lac cu pești</h3>
   <div id="lake"></div>
+  <h3>Paznici</h3>
+  <button onclick="hireGuard()">🛡️ Angajează paznic (3 monede)</button>
+  <button onclick="fireGuard()">❌ Concediază paznic</button>
 </div>
 
 <!-- SHOP -->
@@ -77,9 +82,11 @@ th,td{padding:6px;text-align:center;}
   <button onclick="buyAnimal('Găină',3)">Cumpără Găină (3 monede)</button>
   <button onclick="buyAnimal('Câine',4)">Cumpără Câine (4 monede)</button>
   <button onclick="buyAnimal('Pisică',4)">Cumpără Pisică (4 monede)</button>
-  <button onclick="sellAnimal()">Vinde un animal (jumătate preț)</button>
-  <button onclick="hireGuard()">Angajează paznic (5 monede)</button>
-  <button onclick="fireGuard()">Concediază paznic</button>
+  <h3>Vinde animale</h3>
+  <button onclick="sellAnimal('Vacă',3)">Vinde Vacă (3 monede)</button>
+  <button onclick="sellAnimal('Găină',2)">Vinde Găină (2 monede)</button>
+  <button onclick="sellAnimal('Câine',3)">Vinde Câine (3 monede)</button>
+  <button onclick="sellAnimal('Pisică',3)">Vinde Pisică (3 monede)</button>
 </div>
 
 <!-- ADMIN -->
@@ -94,7 +101,7 @@ th,td{padding:6px;text-align:center;}
 </div>
 
 <script>
-//=== Logare si inregistrare ramane neschimbata ===
+//=== Logare/registrare ramane neschimbata ===
 async function sha256Hex(str){const utf8=new TextEncoder().encode(str);const hash=await crypto.subtle.digest('SHA-256',utf8);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const STORAGE_USERS='farm_users_advanced';
 function loadUsers(){return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}');}
@@ -128,7 +135,8 @@ const adminTable=document.getElementById('admin-table');
 const animalsListDiv=document.getElementById('animals-list');
 const tractorBtn=document.getElementById('tractor-btn');
 
-let currentUser=null; let currentRole=null; let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],farmLevel:1,animals:[],guards:[]};
+let currentUser=null; let currentRole=null; 
+let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],farmLevel:1,animals:[],guards:[]};
 const plantTimes={'Grâu':10,'Legume':15,'Fructe':20};
 
 showRegBtn.addEventListener('click',()=>{registerArea.style.display='block';});
@@ -168,12 +176,13 @@ function onLogin(){
   notLoggedDiv.style.display='none'; loggedDiv.style.display='block'; farmArea.style.display='block'; shopArea.style.display='block';
   meUsernameEl.textContent=currentUser; meRoleEl.textContent=currentRole;
   if(!userData.plots || userData.plots.length===0) userData.plots=Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
+  if(!userData.guards) userData.guards=[];
   renderFarm(); updateResourceUI(); renderAnimals(); renderGuards();
   if(currentRole==='admin'){adminArea.style.display='block'; renderAdminTable();}
   setInterval(updateLoop,1000);
 }
 
-//=== Ferma ===
+//=== Ferma și animale ===
 function renderFarm(){
   plotsDiv.innerHTML=''; userData.plots.forEach((p,i)=>{
     const div=document.createElement('div'); div.className='plot';
@@ -208,22 +217,9 @@ tractorBtn.addEventListener('click',()=>{
   }); saveUserData(); renderFarm(); updateResourceUI();
 });
 
-//=== Animale ===
-function buyAnimal(name,cost){
-  if(userData.coins>=cost){userData.coins-=cost; userData.animals.push(name); saveUserData(); updateResourceUI(); renderAnimals();}
-  else alert('Nu ai suficiente monede!');
-}
-function sellAnimal(){
-  if(userData.animals.length>0){
-    const animal = userData.animals.pop();
-    let price = 0;
-    if(animal==='Vacă') price=2;
-    if(animal==='Găină') price=1;
-    if(animal==='Câine'||animal==='Pisică') price=2;
-    userData.coins += price;
-    saveUserData(); updateResourceUI(); renderAnimals();
-  } else alert('Nu ai animale de vândut!');
-}
+function buyAnimal(name,cost){if(userData.coins>=cost){userData.coins-=cost; userData.animals.push(name); saveUserData(); updateResourceUI(); renderAnimals();} else alert('Nu ai suficiente monede!');}
+function sellAnimal(name,cost){const idx=userData.animals.indexOf(name); if(idx>=0){userData.animals.splice(idx,1); userData.coins+=cost; saveUserData(); updateResourceUI(); renderAnimals();} else alert('Nu ai acest animal!');}
+
 function renderAnimals(){
   animalsListDiv.innerHTML='';
   userData.animals.forEach(a=>{
@@ -242,57 +238,45 @@ function updateResourceUI(){grainCount.textContent=userData.grain; vegCount.text
 function saveUserData(){const users=loadUsers(); if(!currentUser) return; users[currentUser]=JSON.parse(JSON.stringify(userData)); saveUsers(users);}
 function renderAdminTable(){}
 
-//=== Hoți și Păzitori ===
-let thiefCounter=0;
-const caughtThieves={};
+//=== Hoți, paznici, lac ===
+const lake=document.getElementById('lake');
+function spawnFish(){
+  const fish=document.createElement('span'); fish.className='fish'; fish.textContent='🐟'; lake.appendChild(fish);
+  fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px';
+  setInterval(()=>{fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px';},1000);
+}
+setInterval(spawnFish,2000);
+
+let thieves=[];
 function spawnThief(){
-    const thief=document.createElement('span');
-    thief.className='thief';
-    thief.dataset.id='thief-'+(thiefCounter++);
-    thief.textContent='🦹';
-    document.body.appendChild(thief);
-    thief.style.left=Math.random()*(window.innerWidth-30)+'px';
-    thief.style.top=Math.random()*(window.innerHeight-30)+'px';
+  const thief=document.createElement('span'); thief.className='thief'; thief.textContent='🦹';
+  document.body.appendChild(thief);
+  thief.style.left=Math.random()*(window.innerWidth-30)+'px';
+  thief.style.top=Math.random()*(window.innerHeight-30)+'px';
+  thieves.push({el:thief,caught:false});
+  setTimeout(()=>{if(!thieves.find(t=>t.el===thief)?.caught) thief.remove(); thieves=thieves.filter(t=>t.el!==thief);},5000);
 }
 setInterval(spawnThief,8000);
 
 function renderGuards(){
-  animalsListDiv.innerHTML += ''; // zona paznici
-  if(!userData.guards) userData.guards=[];
-  userData.guards.forEach(g=>{ 
-    if(!g.element){
-      const span=document.createElement('span');
-      span.className='guard';
-      span.textContent='👮';
-      document.body.appendChild(span);
-      g.element=span;
+  userData.guards.forEach((g,i)=>{
+    if(!g.el){
+      const span=document.createElement('span'); span.className='guard'; span.textContent='🛡'; document.body.appendChild(span);
+      g.el=span;
       span.style.left=Math.random()*window.innerWidth+'px';
       span.style.top=Math.random()*window.innerHeight+'px';
+      setInterval(()=>{span.style.left=Math.random()*window.innerWidth+'px'; span.style.top=Math.random()*window.innerHeight+'px';},2000);
     }
   });
 }
+function hireGuard(){if(userData.coins>=3){userData.coins-=3; userData.guards.push({}); saveUserData(); renderGuards(); updateResourceUI();} else alert('Nu ai suficiente monede!');}
+function fireGuard(){if(userData.guards.length>0){const g=userData.guards.pop(); if(g.el) g.el.remove(); saveUserData(); updateResourceUI();} else alert('Nu ai paznici!');}
 
-// Angajare și concediere paznici
-function hireGuard(){ if(userData.coins>=5){userData.coins-=5; userData.guards.push({element:null}); saveUserData(); renderGuards(); updateResourceUI();} else alert('Nu ai suficiente monede!'); }
-function fireGuard(){ if(userData.guards.length>0){const g=userData.guards.pop(); if(g.element) g.element.remove(); saveUserData(); } else alert('Nu ai paznici!'); }
-
-// Comportament paznici
-function updateGuardsBehavior(){
-  const thieves=document.querySelectorAll('.thief');
-  userData.guards.forEach(g=>{
-    if(!g.element) return;
-    thieves.forEach(thief=>{
-      if(caughtThieves[thief.dataset.id]) return;
-      const guardRect=g.element.getBoundingClientRect();
-      const thiefRect=thief.getBoundingClientRect();
-      const dx=guardRect.left-thiefRect.left;
-      const dy=guardRect.top-thiefRect.top;
-      const dist=Math.sqrt(dx*dx+dy*dy);
-      if(dist<50){ // prins
-        caughtThieves[thief.dataset.id]=true;
-        thief.style.display='none';
-        setTimeout(()=>{ thief.style.display='block'; delete caughtThieves[thief.dataset.id];},45000);
-      } else {
-        const speed=5;
-        const angle=Math.atan2(dy,dx);
-        g.element.style.left
+function catchThieves(){
+  thieves.forEach(t=>{
+    if(t.caught) return;
+    userData.guards.forEach(g=>{
+      const guardEl=g.el; if(!guardEl) return;
+      const gx=parseInt(guardEl.style.left); const gy=parseInt(guardEl.style.top);
+      const tx=parseInt(t.el.style.left); const ty=parseInt(t.el.style.top);
+      const
