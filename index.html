@@ -2,12 +2,12 @@
 <html lang="ro">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Ferma Avansată a lui Ion</title>
 <style>
 body{font-family:Arial,sans-serif;background:#d0f0c0;margin:0;padding:20px;}
 h1,h2,h3{color:#2e7d32;margin:5px 0;}
-input,button,select{padding:6px;border-radius:5px;border:1px solid #ccc;font-size:14px;margin:3px;}
+input,button,select{padding:6px;border-radius:5px;border:1px solid #ccc;font-size:14px;}
 button{background:#2e7d32;color:#fff;border:0;cursor:pointer;}
 button:hover{background:#1b5e20;}
 .muted{color:#666;font-size:13px;}
@@ -34,13 +34,13 @@ th,td{padding:6px;text-align:center;}
 <!-- LOGIN / REGISTER -->
 <div id="login-area">
   <div id="not-logged">
-    <input id="login-username" placeholder="Username"><br>
-    <input id="login-password" type="password" placeholder="Parolă"><br>
+    <input id="login-username" placeholder="Username"><br><br>
+    <input id="login-password" placeholder="Parolă" type="password"><br><br>
     <button id="login-btn">Loghează</button>
-    <button id="show-register-btn">Înregistrează</button>
+    <button id="show-register-btn" style="background:#388e3c">Înregistrează</button>
     <div id="register-area" style="display:none;margin-top:10px;">
-      <input id="reg-username" placeholder="Username"><br>
-      <input id="reg-password" type="password" placeholder="Parolă"><br>
+      <input id="reg-username" placeholder="Username"><br><br>
+      <input id="reg-password" placeholder="Parolă" type="password"><br><br>
       <button id="register-btn">Creează cont</button>
       <button id="cancel-register">Anulează</button>
       <div id="reg-msg" class="muted"></div>
@@ -66,77 +66,99 @@ th,td{padding:6px;text-align:center;}
   <div>🌾 Grâu: <span id="grain-count">0</span></div>
   <div>🥕 Legume: <span id="veg-count">0</span></div>
   <div>🍎 Fructe: <span id="fruit-count">0</span></div>
+  <div>🍒 Pomi: <span id="tree-count">0</span></div>
   <div>💰 Monede: <span id="coins-count">0</span></div>
 </div>
 
-<!-- SHOP / ANIMALS -->
+<!-- SHOP AREA -->
 <div id="shop-area" style="display:none;">
   <h2>🛒 Magazin</h2>
-  <button onclick="sellResource('Grâu',3)">Vinde Grâu (3 monede/buc)</button>
-  <button onclick="sellResource('Legume',5)">Vinde Legume (5 monede/buc)</button>
-  <button onclick="sellResource('Fructe',7)">Vinde Fructe (7 monede/buc)</button>
-  <br>
-  <button onclick="buyAnimal('Vacă',5)">Cumpără Vacă (5 monede)</button>
-  <button onclick="buyAnimal('Găină',3)">Cumpără Găină (3 monede)</button>
+  <button onclick="buyPlant('Grâu',5)">Cumpără Grâu (5 monede)</button>
+  <button onclick="buyPlant('Legume',7)">Cumpără Legume (7 monede)</button>
+  <button onclick="buyPlant('Fructe',10)">Cumpără Fructe (10 monede)</button>
+  <button onclick="buyPlant('Pom',20)">Cumpără Pom (20 monede)</button>
+  <button onclick="sellAll()">Vinde toată recolta</button>
+  <h3>Animale</h3>
+  <button onclick="buyAnimal('Vacă',15)">Cumpără Vacă (15 monede)</button>
+  <button onclick="buyAnimal('Găină',5)">Cumpără Găină (5 monede)</button>
   <div id="animals-list"></div>
 </div>
 
 <script>
-// ================= SHA-256 =================
+// ===== SHA-256 =====
 async function sha256(str){
   const buf = new TextEncoder().encode(str);
   const hash = await crypto.subtle.digest('SHA-256', buf);
   return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-// ================= LocalStorage =================
+// ===== LocalStorage =====
 const STORAGE_USERS = 'farm_users_full';
 function loadUsers(){ return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}'); }
 function saveUsers(u){ localStorage.setItem(STORAGE_USERS, JSON.stringify(u)); }
 
-// ================= UI Elements =================
-const loginUsername = document.getElementById('login-username');
-const loginPassword = document.getElementById('login-password');
-const loginBtn = document.getElementById('login-btn');
-const showRegBtn = document.getElementById('show-register-btn');
-const registerArea = document.getElementById('register-area');
-const regUsername = document.getElementById('reg-username');
-const regPassword = document.getElementById('reg-password');
-const registerBtn = document.getElementById('register-btn');
-const cancelRegister = document.getElementById('cancel-register');
-const regMsg = document.getElementById('reg-msg');
-const notLoggedDiv = document.getElementById('not-logged');
-const loggedDiv = document.getElementById('logged');
-const meUsernameEl = document.getElementById('me-username');
-const logoutBtn = document.getElementById('logout-btn');
-
-const farmArea = document.getElementById('farm-area');
-const shopArea = document.getElementById('shop-area');
-const plotsDiv = document.getElementById('plots');
-const grainCount = document.getElementById('grain-count');
-const vegCount = document.getElementById('veg-count');
-const fruitCount = document.getElementById('fruit-count');
-const coinsCount = document.getElementById('coins-count');
-const animalsListDiv = document.getElementById('animals-list');
-const tractorBtn = document.getElementById('tractor-btn');
+// ===== UI Elements =====
+const loginUsername=document.getElementById('login-username');
+const loginPassword=document.getElementById('login-password');
+const loginBtn=document.getElementById('login-btn');
+const showRegBtn=document.getElementById('show-register-btn');
+const registerArea=document.getElementById('register-area');
+const regUsername=document.getElementById('reg-username');
+const regPassword=document.getElementById('reg-password');
+const registerBtn=document.getElementById('register-btn');
+const cancelRegister=document.getElementById('cancel-register');
+const regMsg=document.getElementById('reg-msg');
+const notLoggedDiv=document.getElementById('not-logged');
+const loggedDiv=document.getElementById('logged');
+const meUsernameEl=document.getElementById('me-username');
+const logoutBtn=document.getElementById('logout-btn');
+const farmArea=document.getElementById('farm-area');
+const shopArea=document.getElementById('shop-area');
+const plotsDiv=document.getElementById('plots');
+const grainCount=document.getElementById('grain-count');
+const vegCount=document.getElementById('veg-count');
+const fruitCount=document.getElementById('fruit-count');
+const treeCount=document.getElementById('tree-count');
+const coinsCount=document.getElementById('coins-count');
+const animalsListDiv=document.getElementById('animals-list');
+const tractorBtn=document.getElementById('tractor-btn');
 
 let currentUser=null;
-let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],animals:[],farmLevel:1};
-const plantTimes={'Grâu':10,'Legume':15,'Fructe':20};
-const plantImgs={'Grâu':'https://i.imgur.com/7bM9a5K.png','Legume':'https://i.imgur.com/Hu2z0kX.png','Fructe':'https://i.imgur.com/59lX4cP.png'};
+let userData={grain:0,veg:0,fruit:0,tree:0,coins:0,plots:[],animals:[],farmLevel:1};
+const plantTimes={'Grâu':10,'Legume':15,'Fructe':20,'Pom':30};
+const plantImgs={'Grâu':'https://i.imgur.com/7bM9a5K.png','Legume':'https://i.imgur.com/Hu2z0kX.png','Fructe':'https://i.imgur.com/59lX4cP.png','Pom':'https://i.imgur.com/l0bKZlQ.png'};
 const animalImgs={'Vacă':'https://i.imgur.com/4L3QZlP.png','Găină':'https://i.imgur.com/Ms5aK8y.png'};
 
-// ================= REGISTER / LOGIN =================
+// ===== REGISTER =====
 showRegBtn.addEventListener('click',()=>{registerArea.style.display='block';});
 cancelRegister.addEventListener('click',()=>{registerArea.style.display='none'; regMsg.textContent='';});
-
 registerBtn.addEventListener('click', async ()=>{
-  const u = regUsername.value.trim();
-  const p = regPassword.value;
-  if(!u||!p){regMsg.textContent='Completează toate câmpurile!'; return;}
-  const users = loadUsers();
-  if(users[u]){regMsg.textContent='Username deja folosit!'; return;}
-  const hash = await sha256(p);
-  users[u]={passHash:hash,coins:10,grain:0,veg:0,fruit:0,plots:Array(9).fill({type:null,ready:false}),animals:[],farmLevel:1};
+  const u=regUsername.value.trim(); const p=regPassword.value;
+  if(!u||!p){ regMsg.textContent='Completează toate câmpurile!'; return;}
+  const users=loadUsers();
+  if(users[u]){ regMsg.textContent='Username deja folosit!'; return;}
+  const hash=await sha256(p);
+  const plots=Array.from({length:9},()=>({type:null,ready:false,plantedAt:null}));
+  users[u]={passHash:hash,coins:20,grain:0,veg:0,fruit:0,tree:0,plots:plots,animals:[],farmLevel:1};
   saveUsers(users);
-  regMsg.textContent='Cont creat! Te poți log
+  regMsg.textContent='Cont creat! Te poți loga.';
+  regUsername.value=''; regPassword.value=''; registerArea.style.display='none';
+});
+
+// ===== LOGIN =====
+loginBtn.addEventListener('click', async ()=>{
+  const u=loginUsername.value.trim(); const p=loginPassword.value;
+  if(!u||!p){alert('Completează username și parolă!'); return;}
+  const users=loadUsers();
+  if(!users[u]){alert('Utilizator inexistent!'); return;}
+  const hash=await sha256(p);
+  if(hash!==users[u].passHash){alert('Parolă greșită!'); return;}
+  currentUser=u; userData=JSON.parse(JSON.stringify(users[u]));
+  localStorage.setItem('currentUser',currentUser);
+  onLogin();
+  loginUsername.value=''; loginPassword.value='';
+});
+
+logoutBtn.addEventListener('click',()=>{
+  currentUser=null; localStorage.removeItem('currentUser');
+  notLoggedDiv
