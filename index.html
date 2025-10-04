@@ -6,9 +6,9 @@
 <title>Ferma Avansată</title>
 <style>
 body{font-family:Arial,sans-serif;background:#d0f0c0;margin:0;padding:20px;}
-h1,h2,h3{color:#2e7d32;margin:5px 0;}
+h1,h2{color:#2e7d32;margin:5px 0;}
 #plots{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0;}
-.plot{width:60px;height:60px;background:#a0522d;border-radius:4px;display:flex;align-items:center;justify-content:center;position:relative;}
+.plot{width:60px;height:60px;background:#a0522d;border-radius:4px;display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;}
 .plot img{width:90%;height:90%;display:block;}
 .plot span{position:absolute;bottom:0;font-size:10px;color:#000;}
 #animals-list img{width:30px;height:30px;margin:2px;}
@@ -17,16 +17,13 @@ h1,h2,h3{color:#2e7d32;margin:5px 0;}
 <body>
 <h1>🌾 Ferma Avansată</h1>
 
-<div id="farm-area">
-  <h2>🐾 Animale</h2>
-  <div id="animals-list"></div>
+<h2>🐾 Animale</h2>
+<div id="animals-list"></div>
 
-  <h2>🪴 Parcela ta de pământ</h2>
-  <div id="plots"></div>
-</div>
+<h2>🪴 Parcela ta de pământ</h2>
+<div id="plots"></div>
 
 <script>
-// Plante și imagini (logo-uri mici)
 const plantImgs={
   'Grâu':'https://i.imgur.com/7bM9a5K.png',
   'Legume':'https://i.imgur.com/Hu2z0kX.png',
@@ -34,7 +31,6 @@ const plantImgs={
   'Pom':'https://i.imgur.com/6l7qOaL.png'
 };
 
-// Animale și imagini
 const animalImgs={
   'Vacă':'https://i.imgur.com/4L3QZlP.png',
   'Găină':'https://i.imgur.com/Ms5aK8y.png',
@@ -42,9 +38,16 @@ const animalImgs={
   'Porc':'https://i.imgur.com/Y6T2s0K.png'
 };
 
-// Exemplu date user
+// Setare inițială
 let userData={
-  plots:Array(6).fill().map(()=>({type:null,plantedAt:null,ready:false})),
+  plots:[
+    {type:'Grâu',plantedAt:Date.now(),ready:true},
+    {type:'Legume',plantedAt:Date.now(),ready:true},
+    {type:'Fructe',plantedAt:Date.now(),ready:true},
+    {type:'Pom',plantedAt:Date.now(),ready:false},
+    {type:null,plantedAt:null,ready:false},
+    {type:null,plantedAt:null,ready:false}
+  ],
   animals:['Vacă','Găină','Cal']
 };
 
@@ -75,11 +78,13 @@ function plantPrompt(idx){
   const choice=prompt('Ce vrei să plantezi? Grâu / Legume / Fructe / Pom','Grâu');
   if(choice && plantImgs[choice]){
     userData.plots[idx].type=choice;
+    userData.plots[idx].plantedAt=Date.now();
+    userData.plots[idx].ready=false;
     renderFarm();
   }
 }
 
-// Initial render
+// Render inițial
 renderFarm();
 renderAnimals();
 </script>
