@@ -82,28 +82,7 @@ th,td{padding:6px;text-align:center;}
 <!-- ADMIN -->
 <div id="admin-area" style="display:none;">
   <h2>🔧 Panou Administrator & Statistici</h2>
-  <table>function renderAdminTable(){
-  const users = loadUsers();
-  adminTable.innerHTML = '';
-  Object.keys(users).forEach(u => {
-    const user = users[u];
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${u}</td><td>${user.role}</td>
-                    <td>${user.grain}</td><td>${user.veg}</td>
-                    <td>${user.fruit}</td><td>${user.coins}</td>
-                    <td>${user.farmLevel}</td>
-                    <td>${user.role!=='admin'?`<button onclick="deleteUser('${u}')">Șterge</button>`:''}</td>`;
-    adminTable.appendChild(tr);
-  });
-}
-function deleteUser(u){
-  if(confirm(`Ștergi utilizatorul ${u}?`)){
-    const users = loadUsers();
-    delete users[u];
-    saveUsers(users);
-    renderAdminTable();
-  }
-}
+  <table>
     <thead>
       <tr><th>Username</th><th>Rol</th><th>Grâu</th><th>Legume</th><th>Fructe</th><th>Monede</th><th>Fermă</th><th>Acțiuni</th></tr>
     </thead>
@@ -112,7 +91,7 @@ function deleteUser(u){
 </div>
 
 <script>
-//=== Logare si inregistrare ramane neschimbata ===
+//=== Logare si inregistrare ===
 async function sha256Hex(str){const utf8=new TextEncoder().encode(str);const hash=await crypto.subtle.digest('SHA-256',utf8);return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');}
 const STORAGE_USERS='farm_users_advanced';
 function loadUsers(){return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}');}
@@ -226,11 +205,32 @@ tractorBtn.addEventListener('click',()=>{
   }); saveUserData(); renderFarm(); updateResourceUI();
 });
 function buyAnimal(name,cost){if(userData.coins>=cost){userData.coins-=cost; userData.animals.push(name); saveUserData(); updateResourceUI(); renderAnimals();} else alert('Nu ai suficiente monede!');}
-function renderAnimals(){animalsListDiv.innerHTML=''; userData.animals.forEach(a=>{const span=document.createElement('span'); span.className='animal'; if(a==='Vacă') span.textContent='🐄'; if(a==='Găină') span.textContent='🐔'; if(a==='Câine') span.textContent='🐕'; if(a==='Pisică') span.textContent='🐈'; animalsListDiv.appendChild(span); span.style.left=Math.random()*plotsDiv.offsetWidth+'px'; span.style.top=Math.random()*plotsDiv.offsetHeight+'px'; setInterval(()=>{span.style.left=Math.random()*plotsDiv.offsetWidth+'px'; span.style.top=Math.random()*plotsDiv.offsetHeight+'px';},2000);});}
 function updateResourceUI(){grainCount.textContent=userData.grain; vegCount.textContent=userData.veg; fruitCount.textContent=userData.fruit; coinsCount.textContent=userData.coins;}
 function saveUserData(){const users=loadUsers(); if(!currentUser) return; users[currentUser]=JSON.parse(JSON.stringify(userData)); saveUsers(users);}
-function //=== Animatii Hoți, Tractoare, Paznici (fără pești) ===
+function renderAdminTable(){
+  const users = loadUsers();
+  adminTable.innerHTML = '';
+  Object.keys(users).forEach(u => {
+    const user = users[u];
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${u}</td><td>${user.role}</td>
+                    <td>${user.grain}</td><td>${user.veg}</td>
+                    <td>${user.fruit}</td><td>${user.coins}</td>
+                    <td>${user.farmLevel}</td>
+                    <td>${user.role!=='admin'?`<button onclick="deleteUser('${u}')">Șterge</button>`:''}</td>`;
+    adminTable.appendChild(tr);
+  });
+}
+function deleteUser(u){
+  if(confirm(`Ștergi utilizatorul ${u}?`)){
+    const users = loadUsers();
+    delete users[u];
+    saveUsers(users);
+    renderAdminTable();
+  }
+}
 
+//=== Animatii Hoți, Tractoare, Paznici ===
 function spawnThief(){
   const thief=document.createElement('span');
   thief.className='thief';
@@ -314,29 +314,4 @@ function moveSeeder(){
 setInterval(moveHarvester,3000);
 setInterval(moveSeeder,5000);
 
-//=== Animatia animalelor cu interval global ===
-function animateAnimals(){
-  const animals=document.querySelectorAll('.animal');
-  animals.forEach(a=>{
-    a.style.left=Math.random()*plotsDiv.offsetWidth+'px';
-    a.style.top=Math.random()*plotsDiv.offsetHeight+'px';
-  });
-}
-setInterval(animateAnimals,2000);
-
-function renderAnimals(){
-  animalsListDiv.innerHTML='';
-  userData.animals.forEach(a=>{
-    const span=document.createElement('span'); 
-    span.className='animal';
-    if(a==='Vacă') span.textContent='🐄';
-    if(a==='Găină') span.textContent='🐔';
-    if(a==='Câine') span.textContent='🐕';
-    if(a==='Pisică') span.textContent='🐈';
-    animalsListDiv.appendChild(span);
-    // poziționare inițială
-    span.style.left=Math.random()*plotsDiv.offsetWidth+'px';
-    span.style.top=Math.random()*plotsDiv.offsetHeight+'px';
-  });
-}
-
+function animateAnimals
