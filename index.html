@@ -2,12 +2,12 @@
 <html lang="ro">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Ferma lui Ion - Multiplayer Demo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ferma Avansată a lui Ion</title>
 <style>
 body{font-family:Arial,sans-serif;background:#d0f0c0;margin:0;padding:20px;}
 h1,h2,h3{color:#2e7d32;margin:5px 0;}
-input,button,select{padding:6px;border-radius:5px;border:1px solid #ccc;font-size:14px;}
+input,button,select{padding:6px;border-radius:5px;border:1px solid #ccc;font-size:14px;margin:3px;}
 button{background:#2e7d32;color:#fff;border:0;cursor:pointer;}
 button:hover{background:#1b5e20;}
 .muted{color:#666;font-size:13px;}
@@ -29,39 +29,27 @@ th,td{padding:6px;text-align:center;}
 </style>
 </head>
 <body>
-<h1>🌾 Ferma lui Ion</h1>
+<h1>🌾 Ferma Avansată a lui Ion</h1>
 
 <!-- LOGIN / REGISTER -->
 <div id="login-area">
   <div id="not-logged">
-    <input id="login-username" placeholder="Username"><br><br>
-    <input id="login-password" placeholder="Parolă" type="password"><br><br>
+    <input id="login-username" placeholder="Username"><br>
+    <input id="login-password" type="password" placeholder="Parolă"><br>
     <button id="login-btn">Loghează</button>
-    <button id="show-register-btn" style="background:#388e3c">Înregistrează</button>
+    <button id="show-register-btn">Înregistrează</button>
     <div id="register-area" style="display:none;margin-top:10px;">
-      <input id="reg-username" placeholder="Username"><br><br>
-      <input id="reg-password" placeholder="Parolă" type="password"><br><br>
-      <select id="reg-role"><option value="user">User</option><option value="admin">Admin</option></select><br><br>
+      <input id="reg-username" placeholder="Username"><br>
+      <input id="reg-password" type="password" placeholder="Parolă"><br>
       <button id="register-btn">Creează cont</button>
       <button id="cancel-register">Anulează</button>
       <div id="reg-msg" class="muted"></div>
     </div>
   </div>
   <div id="logged" style="display:none;">
-    <p class="muted">Logat ca <strong id="me-username"></strong> (<span id="me-role"></span>)</p>
+    <p class="muted">Logat ca <strong id="me-username"></strong></p>
     <button id="logout-btn">Deconectează</button>
   </div>
-</div>
-
-<!-- LEADERBOARD -->
-<div id="leaderboard-area" style="display:none;">
-  <h2>🏆 Leaderboard</h2>
-  <table id="leaderboard-table">
-    <thead>
-      <tr><th>Loc</th><th>Username</th><th>Monede</th></tr>
-    </thead>
-    <tbody></tbody>
-  </table>
 </div>
 
 <!-- FARM AREA -->
@@ -84,36 +72,29 @@ th,td{padding:6px;text-align:center;}
 <!-- SHOP / ANIMALS -->
 <div id="shop-area" style="display:none;">
   <h2>🛒 Magazin</h2>
+  <button onclick="sellResource('Grâu',3)">Vinde Grâu (3 monede/buc)</button>
+  <button onclick="sellResource('Legume',5)">Vinde Legume (5 monede/buc)</button>
+  <button onclick="sellResource('Fructe',7)">Vinde Fructe (7 monede/buc)</button>
+  <br>
   <button onclick="buyAnimal('Vacă',5)">Cumpără Vacă (5 monede)</button>
   <button onclick="buyAnimal('Găină',3)">Cumpără Găină (3 monede)</button>
   <div id="animals-list"></div>
 </div>
 
-<!-- ADMIN / STATISTICI -->
-<div id="admin-area" style="display:none;">
-  <h2>🔧 Panou Administrator & Statistici</h2>
-  <table>
-    <thead>
-      <tr><th>Username</th><th>Rol</th><th>Grâu</th><th>Legume</th><th>Fructe</th><th>Monede</th><th>Fermă</th><th>Acțiuni</th></tr>
-    </thead>
-    <tbody id="admin-table"></tbody>
-  </table>
-</div>
-
 <script>
-// SHA-256
-async function sha256Hex(str){
-  const utf8 = new TextEncoder().encode(str);
-  const hash = await crypto.subtle.digest('SHA-256', utf8);
+// ================= SHA-256 =================
+async function sha256(str){
+  const buf = new TextEncoder().encode(str);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
   return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
-// LocalStorage
-const STORAGE_USERS = 'farm_users_advanced';
+// ================= LocalStorage =================
+const STORAGE_USERS = 'farm_users_full';
 function loadUsers(){ return JSON.parse(localStorage.getItem(STORAGE_USERS)||'{}'); }
-function saveUsers(u){ localStorage.setItem(STORAGE_USERS,JSON.stringify(u)); }
+function saveUsers(u){ localStorage.setItem(STORAGE_USERS, JSON.stringify(u)); }
 
-// Elemente UI
+// ================= UI Elements =================
 const loginUsername = document.getElementById('login-username');
 const loginPassword = document.getElementById('login-password');
 const loginBtn = document.getElementById('login-btn');
@@ -121,72 +102,41 @@ const showRegBtn = document.getElementById('show-register-btn');
 const registerArea = document.getElementById('register-area');
 const regUsername = document.getElementById('reg-username');
 const regPassword = document.getElementById('reg-password');
-const regRole = document.getElementById('reg-role');
 const registerBtn = document.getElementById('register-btn');
 const cancelRegister = document.getElementById('cancel-register');
 const regMsg = document.getElementById('reg-msg');
 const notLoggedDiv = document.getElementById('not-logged');
 const loggedDiv = document.getElementById('logged');
 const meUsernameEl = document.getElementById('me-username');
-const meRoleEl = document.getElementById('me-role');
 const logoutBtn = document.getElementById('logout-btn');
+
 const farmArea = document.getElementById('farm-area');
 const shopArea = document.getElementById('shop-area');
-const adminArea = document.getElementById('admin-area');
 const plotsDiv = document.getElementById('plots');
 const grainCount = document.getElementById('grain-count');
 const vegCount = document.getElementById('veg-count');
 const fruitCount = document.getElementById('fruit-count');
 const coinsCount = document.getElementById('coins-count');
-const adminTable = document.getElementById('admin-table');
-const leaderboardTable = document.querySelector('#leaderboard-table tbody');
 const animalsListDiv = document.getElementById('animals-list');
 const tractorBtn = document.getElementById('tractor-btn');
 
 let currentUser=null;
-let currentRole=null;
-let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],farmLevel:1,animals:[]};
+let userData={grain:0,veg:0,fruit:0,coins:0,plots:[],animals:[],farmLevel:1};
 const plantTimes={'Grâu':10,'Legume':15,'Fructe':20};
 const plantImgs={'Grâu':'https://i.imgur.com/7bM9a5K.png','Legume':'https://i.imgur.com/Hu2z0kX.png','Fructe':'https://i.imgur.com/59lX4cP.png'};
 const animalImgs={'Vacă':'https://i.imgur.com/4L3QZlP.png','Găină':'https://i.imgur.com/Ms5aK8y.png'};
 
-// REGISTER
+// ================= REGISTER / LOGIN =================
 showRegBtn.addEventListener('click',()=>{registerArea.style.display='block';});
 cancelRegister.addEventListener('click',()=>{registerArea.style.display='none'; regMsg.textContent='';});
-registerBtn.addEventListener('click', async () => {
+
+registerBtn.addEventListener('click', async ()=>{
   const u = regUsername.value.trim();
   const p = regPassword.value;
-  const role = regRole.value;
-  if(!u || !p){regMsg.textContent='Completează toate câmpurile!'; return;}
+  if(!u||!p){regMsg.textContent='Completează toate câmpurile!'; return;}
   const users = loadUsers();
   if(users[u]){regMsg.textContent='Username deja folosit!'; return;}
-  const hash = await sha256Hex(p);
-  users[u] = {
-    passHash: hash,
-    plots: Array(6).fill(0).map(()=>({type:null,plantedAt:null,ready:false})),
-    grain:0, veg:0, fruit:0, coins:10, animals:[], farmLevel:1, role:role
-  };
+  const hash = await sha256(p);
+  users[u]={passHash:hash,coins:10,grain:0,veg:0,fruit:0,plots:Array(9).fill({type:null,ready:false}),animals:[],farmLevel:1};
   saveUsers(users);
-  regMsg.textContent='Cont creat! Poți să te loghezi.';
-  regUsername.value=''; regPassword.value=''; registerArea.style.display='none';
-});
-
-// LOGIN
-loginBtn.addEventListener('click', async () => {
-  const u = loginUsername.value.trim();
-  const p = loginPassword.value;
-  if(!u || !p){alert('Completează username și parolă!'); return;}
-  const users = loadUsers();
-  if(!users[u]){alert('Utilizator inexistent!'); return;}
-  const hash = await sha256Hex(p);
-  if(hash !== users[u].passHash){alert('Parolă greșită!'); return;}
-  currentUser=u; currentRole=users[u].role; userData=JSON.parse(JSON.stringify(users[u]));
-  localStorage.setItem('currentUser', currentUser);
-  onLogin();
-  loginUsername.value=''; loginPassword.value='';
-});
-
-// LOGOUT
-logoutBtn.addEventListener('click',()=>{
-  currentUser=null; currentRole=null; localStorage.removeItem('currentUser');
-  notLoggedDiv.style.display='block'; loggedDiv.style.display='none'; farmArea.style.display='none'; shopArea.style.display='none';
+  regMsg.textContent='Cont creat! Te poți log
