@@ -12,17 +12,19 @@ button{background:#2e7d32;color:#fff;border:0;cursor:pointer;}
 button:hover{background:#1b5e20;}
 .muted{color:#666;font-size:13px;}
 #login-area,#farm-area,#admin-area,#shop-area,#leaderboard-area{margin-bottom:20px;}
-#plots{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0;position:relative;width:100%;}
+#plots{display:flex;gap:5px;flex-wrap:wrap;margin:10px 0;position:relative;width:100%;height:400px;}
 .plot{width:60px;height:60px;background:#a0522d;border-radius:4px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;overflow:hidden;}
 .plot .crop{width:100%;height:100%;border-radius:50%;transform:scale(0);transition: transform 1s,background 1s;}
 .plot.planted .crop{background:linear-gradient(#8B4513,#FFD700);transform:scale(1);}
 .plot.ready .crop{background:linear-gradient(#228B22,#ADFF2F);}
-#animals-list{position:relative;width:100%;height:100px;}
-.animal,.fish,.thief,.guard{font-size:28px;position:absolute;transition:left 1s, top 1s;}
+#animals-list .animal{width:30px;height:30px;border-radius:50%;background:orange;position:absolute;transition:left 1s,top 1s;text-align:center;line-height:30px;color:#fff;font-weight:bold;}
 #lake{width:100%;height:80px;background:lightblue;margin-top:10px;position:relative;overflow:hidden;}
+#lake .fish{width:15px;height:15px;background:#00f;border-radius:50%;position:absolute;transition:left 1s,top 1s;}
 .harvester,.seeder{width:25px;height:25px;position:absolute;border-radius:4px;z-index:10;transition:left 0.5s,top 0.5s;}
 .harvester{background:green;}
 .seeder{background:blue;}
+.thief{width:20px;height:20px;position:absolute;background:red;border-radius:50%;z-index:10;}
+#guards img{width:40px;height:40px;margin-right:5px;position:absolute;transition:left 1s,top 1s;}
 table{width:100%;border-collapse:collapse;margin-top:10px;}
 table,th,td{border:1px solid #ccc;}
 th,td{padding:6px;text-align:center;}
@@ -68,6 +70,10 @@ th,td{padding:6px;text-align:center;}
   <div>💰 Monede: <span id="coins-count">0</span></div>
   <div id="animals-list"></div>
   <div id="lake"></div>
+  <div id="guards">
+    <img src="https://i.imgur.com/5X3PnDz.png" alt="Paznic 1">
+    <img src="https://i.imgur.com/5X3PnDz.png" alt="Paznic 2">
+  </div>
 </div>
 
 <!-- SHOP -->
@@ -75,8 +81,6 @@ th,td{padding:6px;text-align:center;}
   <h2>🛒 Magazin</h2>
   <button onclick="buyAnimal('Vacă',5)">Cumpără Vacă (5 monede)</button>
   <button onclick="buyAnimal('Găină',3)">Cumpără Găină (3 monede)</button>
-  <button onclick="buyAnimal('Câine',4)">Cumpără Câine (4 monede)</button>
-  <button onclick="buyAnimal('Pisică',4)">Cumpără Pisică (4 monede)</button>
 </div>
 
 <!-- ADMIN -->
@@ -165,12 +169,12 @@ function onLogin(){
   notLoggedDiv.style.display='none'; loggedDiv.style.display='block'; farmArea.style.display='block'; shopArea.style.display='block';
   meUsernameEl.textContent=currentUser; meRoleEl.textContent=currentRole;
   if(!userData.plots || userData.plots.length===0) userData.plots=Array(18).fill().map(()=>({type:null,plantedAt:null,ready:false}));
-  renderFarm(); updateResourceUI(); renderAnimals();
+  renderFarm(); updateResourceUI(); renderAnimals(); moveGuards();
+  setInterval(updateLoop,1000); setInterval(moveGuards,3000); setInterval(spawnThiefAnimated,8000);
   if(currentRole==='admin'){adminArea.style.display='block'; renderAdminTable();}
-  setInterval(updateLoop,1000);
 }
 
-//=== Ferma ===
+//=== Ferma si animatii ===
 function renderFarm(){
   plotsDiv.innerHTML=''; userData.plots.forEach((p,i)=>{
     const div=document.createElement('div'); div.className='plot';
@@ -204,26 +208,59 @@ tractorBtn.addEventListener('click',()=>{
     if(p.ready){if(p.type==='Grâu') userData.grain+=1; if(p.type==='Legume') userData.veg+=1; if(p.type==='Fructe') userData.fruit+=1; userData.coins+=1; p.type=null; p.ready=false; p.plantedAt=null;}
   }); saveUserData(); renderFarm(); updateResourceUI();
 });
-function buyAnimal(name,cost){if(userData.coins>=cost){userData.coins-=cost; userData.animals.push(name); saveUserData(); updateResourceUI(); renderAnimals();} else alert('Nu ai suficiente monede!');}
-function renderAnimals(){animalsListDiv.innerHTML=''; userData.animals.forEach(a=>{const span=document.createElement('span'); span.className='animal'; if(a==='Vacă') span.textContent='🐄'; if(a==='Găină') span.textContent='🐔'; if(a==='Câine') span.textContent='🐕'; if(a==='Pisică') span.textContent='🐈'; animalsListDiv.appendChild(span); span.style.left=Math.random()*plotsDiv.offsetWidth+'px'; span.style.top=Math.random()*plotsDiv.offsetHeight+'px'; setInterval(()=>{span.style.left=Math.random()*plotsDiv.offsetWidth+'px'; span.style.top=Math.random()*plotsDiv.offsetHeight+'px';},2000);});}
+function buyAnimal(name,cost){
+  if(userData.coins>=cost){
+    userData.coins-=cost; userData.animals.push(name);
+    saveUserData(); updateResourceUI(); renderAnimals();
+  } else alert('Nu ai suficiente monede!');
+}
+function renderAnimals(){
+  animalsListDiv.innerHTML=''; userData.animals.forEach((a,i)=>{
+    const div=document.createElement('div'); div.className='animal'; div.textContent=a[0]; // primul caracter
+    animalsListDiv.appendChild(div);
+    const x=Math.random()*plotsDiv.offsetWidth; const y=Math.random()*plotsDiv.offsetHeight;
+    div.style.left=x+'px'; div.style.top=y+'px';
+    setInterval(()=>{div.style.left=Math.random()*plotsDiv.offsetWidth+'px'; div.style.top=Math.random()*plotsDiv.offsetHeight+'px';},2000);
+  });
+}
 function updateResourceUI(){grainCount.textContent=userData.grain; vegCount.textContent=userData.veg; fruitCount.textContent=userData.fruit; coinsCount.textContent=userData.coins;}
 function saveUserData(){const users=loadUsers(); if(!currentUser) return; users[currentUser]=JSON.parse(JSON.stringify(userData)); saveUsers(users);}
 function renderAdminTable(){}
 
 //=== Animatii Hoți, Tractoare, Pesti, Paznici ===
 const lake=document.getElementById('lake');
-function spawnFish(){const fish=document.createElement('span'); fish.className='fish'; fish.textContent='🐟'; lake.appendChild(fish); fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px'; setInterval(()=>{fish.style.left=Math.random()*lake.offsetWidth+'px'; fish.style.top=Math.random()*lake.offsetHeight+'px';},1000);}
+function spawnFish(){const fish=document.createElement('div');fish.className='fish';lake.appendChild(fish);fish.style.left=Math.random()*lake.offsetWidth+'px';fish.style.top=Math.random()*lake.offsetHeight+'px';setInterval(()=>{fish.style.left=Math.random()*lake.offsetWidth+'px';fish.style.top=Math.random()*lake.offsetHeight+'px';},1000);}
 setInterval(spawnFish,2000);
-function spawnThief(){const thief=document.createElement('span'); thief.className='thief'; thief.textContent='🦹'; document.body.appendChild(thief); thief.style.left=Math.random()*(window.innerWidth-30)+'px'; thief.style.top=Math.random()*(window.innerHeight-30)+'px'; setTimeout(()=>{thief.remove();},5000);}
-setInterval(spawnThief,8000);
-function renderGuards(){let guardDiv=document.getElementById('guards'); if(!guardDiv){guardDiv=document.createElement('div'); guardDiv.id='guards'; document.body.appendChild(guardDiv);} guardDiv.innerHTML=''; for(let i=0;i<2;i++){const g=document.createElement('span'); g.className='guard'; g.textContent='🛡️'; guardDiv.appendChild(g); g.style.left=Math.random()*window.innerWidth+'px'; g.style.top=Math.random()*window.innerHeight+'px'; setInterval(()=>{g.style.left=Math.random()*window.innerWidth+'px'; g.style.top=Math.random()*window.innerHeight+'px';},2000);}}
-renderGuards();
 
-const harvester=document.createElement('div');harvester.className='harvester';document.body.appendChild(harvester);
-const seeder=document.createElement('div');seeder.className='seeder';document.body.appendChild(seeder);
-function moveHarvester(){const plots=document.querySelectorAll('.plot.ready');if(plots.length===0) return; const target=plots[Math.floor(Math.random()*plots.length)]; const rect=target.getBoundingClientRect(); harvester.style.left=rect.left+'px'; harvester.style.top=rect.top+'px'; setTimeout(()=>{target.classList.remove('ready','planted'); target.querySelector('.crop').style.transform='scale(0)';},500);}
-function moveSeeder(){const plots=document.querySelectorAll('.plot:not(.planted)');if(plots.length===0) return; const target=plots[Math.floor(Math.random()*plots.length)]; const rect=target.getBoundingClientRect(); seeder.style.left=rect.left+'px'; seeder.style.top=rect.top+'px'; setTimeout(()=>{target.classList.add('planted');},500);}
-setInterval(moveHarvester,3000); setInterval(moveSeeder,5000);
+const guards=document.querySelectorAll('#guards img');
+function moveGuards(){
+  guards.forEach(guard=>{
+    const x=Math.random()*(plotsDiv.offsetWidth-40);
+    const y=Math.random()*(plotsDiv.offsetHeight-40);
+    guard.style.left=x+'px';
+    guard.style.top=y+'px';
+  });
+}
+
+function spawnThiefAnimated(){
+  const thief=document.createElement('div'); thief.className='thief'; plotsDiv.appendChild(thief);
+  thief.style.left=Math.random()*(plotsDiv.offsetWidth-20)+'px';
+  thief.style.top=Math.random()*(plotsDiv.offsetHeight-20)+'px';
+  let steps=0;
+  const moveInterval=setInterval(()=>{
+    thief.style.left=Math.random()*(plotsDiv.offsetWidth-20)+'px';
+    thief.style.top=Math.random()*(plotsDiv.offsetHeight-20)+'px';
+    steps++;
+    guards.forEach(guard=>{
+      const g=guard.getBoundingClientRect();
+      const t=thief.getBoundingClientRect();
+      if(!(g.right<t.left || g.left>t.right || g.bottom<t.top || g.top>t.bottom)){
+        thief.remove(); clearInterval(moveInterval);
+      }
+    });
+    if(steps>5){thief.remove(); clearInterval(moveInterval);}
+  },1000);
+}
 
 function updateLoop(){updatePlots(); renderFarm();}
 </script>
